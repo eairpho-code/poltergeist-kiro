@@ -9,12 +9,15 @@ here. Mismatch detection, scale-problem detection, query methods, and the MCP
 server belong to later stages.
 """
 
+import logging
 import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Callable, List, Optional
 
 from poltergeist.normalize import normalize_coordinates, validate_coordinate_space
+
+logger = logging.getLogger("poltergeist.action_log")
 
 # Maximum length of a UI element short label.
 MAX_LABEL_LENGTH = 50
@@ -117,7 +120,12 @@ def _parse_iso_timestamp(timestamp: str) -> datetime:
             "(e.g., 2026-05-15T14:30:45.123Z)"
         )
     if moment.tzinfo is None:
-        moment = moment.replace(tzinfo=timezone.utc)
+        # A bare date or datetime with no zone is ambiguous; the contract is a
+        # UTC ISO 8601 timestamp, which must carry a time-zone marker.
+        raise ValueError(
+            "timestamp must be UTC ISO 8601 with milliseconds "
+            "(e.g., 2026-05-15T14:30:45.123Z)"
+        )
     return moment
 
 
@@ -156,6 +164,11 @@ class ActionLog:
 
         label = ui_element.label
         if label is not None and len(label) > MAX_LABEL_LENGTH:
+            logger.warning(
+                "UI element label truncated from %d to %d characters",
+                len(label),
+                MAX_LABEL_LENGTH,
+            )
             label = label[:MAX_LABEL_LENGTH]
         return UIElement(role=ui_element.role, label=label)
 
@@ -167,7 +180,7 @@ class ActionLog:
         coordinate_space: str,
         scale_factor: float,
         ui_element: Optional[UIElement],
-    ) -> None:
+    ) -> ClickAction:
         validate_coordinate_space(coordinate_space)
         normalized_x, normalized_y = normalize_coordinates(x, y, scale_factor)
         action = ClickAction(
@@ -182,6 +195,7 @@ class ActionLog:
             ui_element=self._prepare_ui_element(ui_element),
         )
         self._actions.append(action)
+        return action
 
     def record_agent_click(
         self,
@@ -190,9 +204,12 @@ class ActionLog:
         coordinate_space: str,
         scale_factor: float,
         ui_element: Optional[UIElement] = None,
-    ) -> None:
-        """Record an agent click action with coordinate normalization."""
-        self._record("agent", x, y, coordinate_space, scale_factor, ui_element)
+    ) -> ClickAction:
+        """Record an agent click action with coordinate normalization.
+
+        Returns the recorded :class:`ClickAction`.
+        """
+        return self._record("agent", x, y, coordinate_space, scale_factor, ui_element)
 
     def record_human_click(
         self,
@@ -201,9 +218,12 @@ class ActionLog:
         coordinate_space: str,
         scale_factor: float,
         ui_element: Optional[UIElement] = None,
-    ) -> None:
-        """Record a human click action with coordinate normalization."""
-        self._record("human", x, y, coordinate_space, scale_factor, ui_element)
+    ) -> ClickAction:
+        """Record a human click action with coordinate normalization.
+
+        Returns the recorded :class:`ClickAction`.
+        """
+        return self._record("human", x, y, coordinate_space, scale_factor, ui_element)
 
     def get_human_actions(
         self,
@@ -251,7 +271,19 @@ class ActionLog:
 
         from poltergeist.detection import detect_mismatches, detect_scale_problem
 
-        mismatches = detect_mismatches(sorted_actions)
+        all_mismatches = detect_mismatches(sorted_actions)
+
+        if since_moment is None:
+            mismatches = all_mismatches
+        else:
+            # Only report mismatches whose human correction falls in the
+            # window the caller asked about. Detection still runs over the full
+            # log so that agent clicks preceding the window are considered.
+            returned_humans = set(id(action) for action in human_actions)
+            mismatches = [
+                m for m in all_mismatches if id(m.human_click) in returned_humans
+            ]
+
         scale_problem = detect_scale_problem(mismatches)
 
         return HumanActionsResponse(

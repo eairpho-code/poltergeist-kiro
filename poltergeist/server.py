@@ -21,14 +21,15 @@ can launch the server as a subprocess:
 - ``POLTERGEIST_HOST``: bind address for HTTP (default "127.0.0.1").
 - ``POLTERGEIST_PORT``: bind port for HTTP (default 8000).
 
-Logging uses the standard :mod:`logging` module directly; a dedicated logging
-configuration module is out of scope for this stage.
+Logging is configured through :mod:`poltergeist.logging_config`, which sends
+records to stderr at the level named by ``POLTERGEIST_LOG_LEVEL``.
 """
 
 import json
 import logging
 import os
 import sys
+import math
 from pathlib import Path
 from typing import Optional
 
@@ -45,6 +46,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from poltergeist.action_log import ActionLog, UIElement
+from poltergeist.logging_config import configure_logging
 from poltergeist.normalize import validate_coordinate_space
 
 logger = logging.getLogger("poltergeist.server")
@@ -63,9 +65,15 @@ action_log = ActionLog()
 
 
 def _validate_scale_factor(scale_factor: float) -> None:
-    """Raise ValueError with the documented message when scale_factor <= 0."""
-    if scale_factor <= 0:
+    """Raise ValueError when scale_factor is not a finite number > 0."""
+    if not math.isfinite(scale_factor) or scale_factor <= 0:
         raise ValueError("scale_factor must be greater than 0")
+
+
+def _validate_coordinates(x: float, y: float) -> None:
+    """Raise ValueError when either coordinate is not a finite number."""
+    if not math.isfinite(x) or not math.isfinite(y):
+        raise ValueError("x and y must be finite")
 
 
 def _record_and_timestamp(record, *args) -> str:
@@ -90,6 +98,7 @@ class _anticipated:
 
     def __exit__(self, exc_type, exc, tb) -> bool:
         if isinstance(exc, ValueError):
+            logger.warning("rejected: %s", exc)
             raise ToolError(str(exc)) from exc
         return False
 
@@ -124,6 +133,7 @@ def record_agent_click(
     logger.info("record_agent_click x=%r y=%r space=%r scale=%r", x, y, coordinate_space, scale_factor)
     with _anticipated():
         validate_coordinate_space(coordinate_space)
+        _validate_coordinates(x, y)
         _validate_scale_factor(scale_factor)
 
         ui_element = None
@@ -280,9 +290,13 @@ async def handle_human_click(request: Request) -> JSONResponse:
             ui_element,
         )
     except ValueError as exc:
+        logger.warning("human-click: validation failed: %s", exc)
         return JSONResponse({"error": str(exc)}, status_code=400)
+    except Exception:
+        logger.error("/human-click failed while recording the click", exc_info=True)
+        return JSONResponse({"error": "Internal server error"}, status_code=500)
 
-    logger.info("human-click: recorded at %s", timestamp)
+    logger.info("/human-click recorded at %s", timestamp)
     return JSONResponse(
         {"status": "recorded", "actor": "human", "timestamp": timestamp},
         status_code=200,
@@ -294,10 +308,7 @@ async def handle_human_click(request: Request) -> JSONResponse:
 
 def main() -> None:
     """Run the server using the transport chosen by the environment."""
-    logging.basicConfig(
-        level=os.environ.get("POLTERGEIST_LOG_LEVEL", "INFO"),
-        stream=sys.stderr,
-    )
+    configure_logging()
 
     transport = os.environ.get("POLTERGEIST_TRANSPORT", "stdio")
 

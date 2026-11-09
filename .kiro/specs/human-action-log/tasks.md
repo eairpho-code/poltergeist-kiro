@@ -283,8 +283,8 @@ This implementation builds an MCP server that records click actions from AI agen
 - [x] 12. Checkpoint - Server implementation complete
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 13. Add error handling and logging
-  - [ ] 13.1 Implement validation error handling
+- [x] 13. Add error handling and logging
+  - [x] 13.1 Implement validation error handling
     - Add error messages for invalid coordinate_space
     - Add error messages for invalid scale_factor
     - Add error messages for invalid timestamp format
@@ -292,7 +292,7 @@ This implementation builds an MCP server that records click actions from AI agen
     - Log warnings for truncated labels
     - _Requirements: 4.2_
   
-  - [ ] 13.2 Add logging configuration
+  - [x] 13.2 Add logging configuration
     - Configure logging to stderr
     - Set log level from POLTERGEIST_LOG_LEVEL environment variable (default: INFO)
     - Log INFO for tool invocations
@@ -300,15 +300,15 @@ This implementation builds an MCP server that records click actions from AI agen
     - Log ERROR for runtime exceptions
     - _Requirements: All (observability)_
   
-  - [ ]* 13.3 Write tests for error handling
+  - [x]* 13.3 Write tests for error handling
     - Test invalid coordinate_space error message
     - Test zero scale_factor error message
     - Test invalid timestamp error message
     - Test label truncation to 50 characters
     - _Requirements: 4.2_
 
-- [ ] 14. End-to-end workflow tests
-  - [ ]* 14.1 Write full workflow integration test
+- [x] 14. End-to-end workflow tests
+  - [x]* 14.1 Write full workflow integration test
     - Record agent click at (100, 100)
     - Wait 2 seconds (simulated with timestamp manipulation)
     - POST human click at (110, 105) to /human-click
@@ -317,7 +317,7 @@ This implementation builds an MCP server that records click actions from AI agen
     - Verify no coordinate scale problem (only 1 mismatch)
     - _Requirements: 2.1, 3.1, 5.1, 6.1, 6.2, 6.3_
   
-  - [ ]* 14.2 Write coordinate scale problem end-to-end test
+  - [x]* 14.2 Write coordinate scale problem end-to-end test
     - Record 5 agent clicks with systematic 2x offset
     - POST 5 human corrections via /human-click
     - Call get_human_actions
@@ -342,7 +342,7 @@ This implementation builds an MCP server that records click actions from AI agen
     - Document HTTP endpoint usage examples (curl, Swift URLSession, JavaScript fetch)
     - _Requirements: All (documentation)_
 
-- [ ] 16. Final checkpoint - Complete system validated
+- [x] 16. Final checkpoint - Complete system validated
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes
