@@ -26,8 +26,8 @@ This implementation builds an MCP server that records click actions from AI agen
     - All verified imports, decorators, and initialization patterns
   - _Requirements: All (foundation for implementation)_
 
-- [ ] 2. Implement core data models
-  - [ ] 2.1 Create UIElement, ClickAction, Mismatch, CoordinateScaleProblem, and HumanActionsResponse dataclasses
+- [x] 2. Implement core data models
+  - [x] 2.1 Create UIElement, ClickAction, Mismatch, CoordinateScaleProblem, and HumanActionsResponse dataclasses
     - Define dataclasses with proper type hints
     - Include all fields from design specification
     - Add serialization helpers (asdict compatibility)
@@ -39,15 +39,15 @@ This implementation builds an MCP server that records click actions from AI agen
     - Test serialization to dict/JSON
     - _Requirements: 1.1, 1.2, 2.3, 3.3_
 
-- [ ] 3. Implement coordinate normalization
-  - [ ] 3.1 Create coordinate normalization functions
+- [x] 3. Implement coordinate normalization
+  - [x] 3.1 Create coordinate normalization functions
     - Implement normalize_coordinates(raw_x, raw_y, scale_factor) -> (normalized_x, normalized_y)
     - Implement denormalize_coordinates for round-trip testing
     - Add validation for scale_factor > 0
     - Support coordinate_space enum: "device_points", "screen_pixels", "screenshot_pixels"
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
   
-  - [ ] 3.2 Write property test for coordinate normalization
+  - [x] 3.2 Write property test for coordinate normalization
     - **Property 1: Normalization Preserves Information**
     - **Validates: Requirements 1.1, 1.3, 1.4, 1.5**
     - Use Hypothesis to generate random coordinates, coordinate spaces, and scale factors
@@ -61,17 +61,17 @@ This implementation builds an MCP server that records click actions from AI agen
     - Test negative coordinates are preserved
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
 
-- [ ] 4. Checkpoint - Coordinate normalization validated
+- [x] 4. Checkpoint - Coordinate normalization validated
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 5. Implement Action Log Store
-  - [ ] 5.1 Create ActionLog class with in-memory storage
+- [x] 5. Implement Action Log Store
+  - [x] 5.1 Create ActionLog class with in-memory storage
     - Initialize empty list for storing ClickActions
     - Add redaction flag (configurable via environment variable)
     - Implement timestamp generation (UTC ISO 8601 with milliseconds)
     - _Requirements: 3.6, 4.3, 4.4, 8.1_
   
-  - [ ] 5.2 Implement record_agent_click method
+  - [x] 5.2 Implement record_agent_click method
     - Accept x, y, coordinate_space, scale_factor, optional ui_element
     - Generate timestamp at ingestion time
     - Normalize coordinates using scale_factor
@@ -81,7 +81,7 @@ This implementation builds an MCP server that records click actions from AI agen
     - Append to action log list
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 4.1, 4.2, 4.3, 4.4_
   
-  - [ ] 5.3 Implement record_human_click method
+  - [x] 5.3 Implement record_human_click method
     - Accept x, y, coordinate_space, scale_factor, optional ui_element
     - Generate timestamp at ingestion time
     - Normalize coordinates using scale_factor
