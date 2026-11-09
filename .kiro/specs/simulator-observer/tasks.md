@@ -13,16 +13,16 @@ Each numbered group is one stage of work and ends when its checks pass. The pack
     - _Requirements: 2.1, 2.2, 2.3, 2.4_
   - [x]* 1.3 Unit tests: `SimulatorScreenTests` and `SimctlParsingTests` (provided)
 
-- [ ] 2. Request bodies, who clicked, and clicks versus drags
-  - [ ] 2.1 Create `ClickPayload.swift` with `ClickPayload`, `UIElementPayload`, `Labels` and `RoleNames`
+- [x] 2. Request bodies, who clicked, and clicks versus drags
+  - [x] 2.1 Create `ClickPayload.swift` with `ClickPayload`, `UIElementPayload`, `Labels` and `RoleNames`
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
-  - [ ] 2.2 Create `ClickOrigin.swift` with `ClickOrigin`, `ClickActor` and `ClickPolicy`
+  - [x] 2.2 Create `ClickOrigin.swift` with `ClickOrigin`, `ClickActor` and `ClickPolicy`
     - _Requirements: 4.1, 4.2, 4.3, 4.4_
-  - [ ] 2.3 Create `PressTracker.swift`
+  - [x] 2.3 Create `PressTracker.swift`
     - _Requirements: 5.1, 5.2, 5.3_
-  - [ ]* 2.4 Unit tests: `ClickPayloadTests`, `ClickOriginTests` and `PressTrackerTests` (provided)
+  - [x]* 2.4 Unit tests: `ClickPayloadTests`, `ClickOriginTests` and `PressTrackerTests` (provided)
 
-- [ ] 3. Checkpoint - The core is complete
+- [x] 3. Checkpoint - The core is complete
   - Run `swift test` and ask the user if questions arise.
 
 - [ ] 4. The executable
