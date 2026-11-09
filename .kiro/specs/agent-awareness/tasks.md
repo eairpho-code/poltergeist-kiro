@@ -46,10 +46,10 @@ This plan extends the Human Action Log so that an agent notices what a person do
 - [x] 5. Checkpoint - Everything passes
   - Run all tests and ask the user if questions arise.
 
-- [ ] 6. Install and document
-  - [ ] 6.1 Define the commands `poltergeist-server`, `poltergeist-watch` and `poltergeist-claude-hook` in `pyproject.toml`
+- [x] 6. Install and document
+  - [x] 6.1 Define the commands `poltergeist-server`, `poltergeist-watch` and `poltergeist-claude-hook` in `pyproject.toml`
     - _Requirements: 9.1_
-  - [ ] 6.2 Write the README
+  - [x] 6.2 Write the README
     - _Requirements: 9.2_
-  - [ ] 6.3 Write `docs/usage.md` with every route, tool and environment variable
+  - [x] 6.3 Write `docs/usage.md` with every route, tool and environment variable
     - _Requirements: 9.3_
