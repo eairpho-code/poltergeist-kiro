@@ -133,6 +133,15 @@ def _parse_iso_timestamp(timestamp: str) -> datetime:
     return moment
 
 
+def parse_timestamp(timestamp: str) -> datetime:
+    """Public name for the UTC ISO 8601 timestamp parser.
+
+    Raises:
+        ValueError: If the string is not a valid UTC ISO 8601 timestamp.
+    """
+    return _parse_iso_timestamp(timestamp)
+
+
 def _redaction_enabled() -> bool:
     """Return True when the redaction environment switch is enabled."""
     value = os.environ.get(REDACT_ENV_VAR)
@@ -150,6 +159,15 @@ class ActionLog:
 
     def _now_timestamp(self) -> str:
         return _format_timestamp(self._clock())
+
+    def now(self) -> str:
+        """Return the current time of the log's clock as a UTC ISO 8601 timestamp.
+
+        The format matches recorded timestamps: milliseconds and a trailing
+        ``Z`` (e.g. ``"2026-05-15T14:30:00.000Z"``). The server uses this for
+        ``server_time``.
+        """
+        return self._now_timestamp()
 
     def _prepare_ui_element(
         self, ui_element: Optional[UIElement]

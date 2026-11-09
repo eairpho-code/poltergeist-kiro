@@ -369,6 +369,41 @@ async def handle_agent_click(request: Request) -> JSONResponse:
     return await _handle_click(request, actor="agent")
 
 
+@mcp.custom_route("/human-actions", methods=["GET"])
+async def handle_get_human_actions(request: Request) -> JSONResponse:
+    """Read the human's actions over plain HTTP.
+
+    Returns the same ``human_actions``, ``mismatches`` and
+    ``coordinate_scale_problem`` as the ``get_human_actions`` tool, plus
+    ``server_time`` (the server clock's current time). An optional ``since``
+    query parameter filters out actions at or before that timestamp. A bad
+    ``since`` value is answered with HTTP 400. The route never changes the log.
+    """
+    since = request.query_params.get("since")
+    try:
+        response = action_log.get_human_actions(since)
+    except ValueError as exc:
+        logger.warning("/human-actions: bad since: %s", exc)
+        return JSONResponse({"error": str(exc)}, status_code=400)
+    except Exception:
+        logger.error("/human-actions failed", exc_info=True)
+        return JSONResponse({"error": "Internal server error"}, status_code=500)
+
+    return JSONResponse(
+        {
+            "human_actions": [_click_to_dict(a) for a in response.human_actions],
+            "mismatches": [_mismatch_to_dict(m) for m in response.mismatches],
+            "coordinate_scale_problem": (
+                _scale_problem_to_dict(response.coordinate_scale_problem)
+                if response.coordinate_scale_problem is not None
+                else None
+            ),
+            "server_time": action_log.now(),
+        },
+        status_code=200,
+    )
+
+
 # --- Entry point ---------------------------------------------------------------
 
 

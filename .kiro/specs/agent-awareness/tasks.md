@@ -28,22 +28,22 @@ This plan extends the Human Action Log so that an agent notices what a person do
     - _Requirements: 4.5, 4.6_
   - [x]* 2.3 Tests for the endpoint: `tests/test_agent_endpoint.py` (provided)
 
-- [ ] 3. Read and describe the human's actions
-  - [ ] 3.1 Add `ActionLog.now()` and a public `parse_timestamp`
+- [x] 3. Read and describe the human's actions
+  - [x] 3.1 Add `ActionLog.now()` and a public `parse_timestamp`
     - _Requirements: 5.1_
-  - [ ] 3.2 Add `GET /human-actions` with `since` and `server_time`
+  - [x] 3.2 Add `GET /human-actions` with `since` and `server_time`
     - _Requirements: 5.1, 5.2, 5.3, 5.4_
-  - [ ] 3.3 Create `poltergeist/activity.py`
+  - [x] 3.3 Create `poltergeist/activity.py`
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6_
 
-- [ ] 4. Watcher and hook
-  - [ ] 4.1 Create `poltergeist/watch.py`
+- [x] 4. Watcher and hook
+  - [x] 4.1 Create `poltergeist/watch.py`
     - _Requirements: 7.1, 7.2, 7.3, 7.4_
-  - [ ] 4.2 Create `poltergeist/claude_hook.py`
+  - [x] 4.2 Create `poltergeist/claude_hook.py`
     - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8, 8.9_
-  - [ ]* 4.3 Tests for the read route, descriptions, watcher and hook: `tests/test_awareness.py` (provided)
+  - [x]* 4.3 Tests for the read route, descriptions, watcher and hook: `tests/test_awareness.py` (provided)
 
-- [ ] 5. Checkpoint - Everything passes
+- [x] 5. Checkpoint - Everything passes
   - Run all tests and ask the user if questions arise.
 
 - [ ] 6. Install and document
