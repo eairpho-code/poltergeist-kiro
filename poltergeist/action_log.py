@@ -101,6 +101,26 @@ def _format_timestamp(moment: datetime) -> str:
     return moment.isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
+def _parse_iso_timestamp(timestamp: str) -> datetime:
+    """Parse a UTC ISO 8601 timestamp (trailing 'Z' allowed) to a datetime.
+
+    Raises:
+        ValueError: If the string is not a valid ISO 8601 timestamp. The
+            message matches the format documented for the MCP tools.
+    """
+    try:
+        normalized = timestamp.replace("Z", "+00:00")
+        moment = datetime.fromisoformat(normalized)
+    except (ValueError, AttributeError):
+        raise ValueError(
+            "timestamp must be UTC ISO 8601 with milliseconds "
+            "(e.g., 2026-05-15T14:30:45.123Z)"
+        )
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    return moment
+
+
 def _redaction_enabled() -> bool:
     """Return True when the redaction environment switch is enabled."""
     value = os.environ.get(REDACT_ENV_VAR)
@@ -184,3 +204,91 @@ class ActionLog:
     ) -> None:
         """Record a human click action with coordinate normalization."""
         self._record("human", x, y, coordinate_space, scale_factor, ui_element)
+
+    def get_human_actions(
+        self,
+        since_timestamp: Optional[str] = None,
+    ) -> HumanActionsResponse:
+        """Retrieve human actions after the given timestamp (exclusive).
+
+        Human clicks are returned in chronological order (oldest first). When
+        ``since_timestamp`` is omitted, all human actions are returned.
+        Mismatch and coordinate-scale-problem detection run over the full
+        action log so that agent clicks preceding a human click are considered.
+
+        Args:
+            since_timestamp: Optional UTC ISO 8601 timestamp (exclusive). Only
+                human clicks recorded strictly after this moment are returned.
+
+        Raises:
+            ValueError: If ``since_timestamp`` is not a valid UTC ISO 8601
+                timestamp.
+
+        Returns:
+            A ``HumanActionsResponse`` with the filtered human actions, the
+            detected mismatches, and an optional coordinate scale problem.
+        """
+        since_moment = (
+            _parse_iso_timestamp(since_timestamp)
+            if since_timestamp is not None
+            else None
+        )
+
+        # Sort the full log chronologically so detection sees correct ordering.
+        sorted_actions = sorted(
+            self._actions, key=lambda click: _parse_iso_timestamp(click.timestamp)
+        )
+
+        human_actions: List[ClickAction] = []
+        for action in sorted_actions:
+            if action.actor != "human":
+                continue
+            if since_moment is not None:
+                action_moment = _parse_iso_timestamp(action.timestamp)
+                if action_moment <= since_moment:
+                    continue
+            human_actions.append(action)
+
+        from poltergeist.detection import detect_mismatches, detect_scale_problem
+
+        mismatches = detect_mismatches(sorted_actions)
+        scale_problem = detect_scale_problem(mismatches)
+
+        return HumanActionsResponse(
+            human_actions=human_actions,
+            mismatches=mismatches,
+            coordinate_scale_problem=scale_problem,
+        )
+
+    def clear(self, before_timestamp: Optional[str] = None) -> int:
+        """Remove actions before the given timestamp (exclusive).
+
+        When ``before_timestamp`` is omitted, every action is removed.
+
+        Args:
+            before_timestamp: Optional UTC ISO 8601 timestamp (exclusive).
+                Actions recorded strictly before this moment are removed.
+
+        Raises:
+            ValueError: If ``before_timestamp`` is not a valid UTC ISO 8601
+                timestamp.
+
+        Returns:
+            The number of actions removed.
+        """
+        if before_timestamp is None:
+            removed = len(self._actions)
+            self._actions = []
+            return removed
+
+        before_moment = _parse_iso_timestamp(before_timestamp)
+
+        kept: List[ClickAction] = []
+        removed = 0
+        for action in self._actions:
+            if _parse_iso_timestamp(action.timestamp) < before_moment:
+                removed += 1
+            else:
+                kept.append(action)
+        self._actions = kept
+        return removed
