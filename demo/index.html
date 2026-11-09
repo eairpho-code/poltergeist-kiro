@@ -367,7 +367,12 @@
     }
     #wantLayer { inset: 0; }
     #pairs { inset: 0; width: 100%; height: 100%; }
-    #botCursor, #ghostPtr, #aimRing { left: 0; top: 0; display: none; }
+    /* The cursor, aim ring and ghost are placed at their point by inline
+       left/top; they are shown and hidden with the [hidden] attribute so the
+       browser review can toggle them through the hidden property. The rule
+       below makes [hidden] win over the display:block these elements carry. */
+    #botCursor, #ghostPtr, #aimRing { left: 0; top: 0; display: block; }
+    #botCursor[hidden], #ghostPtr[hidden], #aimRing[hidden] { display: none; }
 
     /* ---- Agent panel ---------------------------------------------------- */
     .col-right .agent-panel {
@@ -566,6 +571,121 @@
       z-index: 5;
     }
 
+    /* The agent's cursor shakes and shows a "!" when the ghost is near
+       (Requirement 7.2), and lifts a little while it is being carried. */
+    .bot-bang {
+      position: absolute;
+      left: 50%;
+      top: calc(-24 * var(--u));
+      transform: translateX(-50%) scale(0);
+      transform-origin: center bottom;
+      font-family: var(--font-head);
+      font-weight: 800;
+      font-size: calc(22 * var(--u));
+      line-height: 1;
+      color: var(--warn);
+      transition: transform 0.12s ease-out;
+      pointer-events: none;
+    }
+    #botCursor.scared { animation: botShake 0.28s linear infinite; }
+    #botCursor.scared .bot-bang { transform: translateX(-50%) scale(1); }
+    #botCursor.carried {
+      box-shadow: 0 calc(10 * var(--u)) calc(16 * var(--u)) rgba(0,0,0,0.35);
+      opacity: 0.92;
+    }
+    #botCursor.carried .bot-bang { transform: translateX(-50%) scale(1); }
+    @keyframes botShake {
+      0%, 100% { margin-left: calc(-11 * var(--u)); }
+      25% { margin-left: calc(-14 * var(--u)); }
+      75% { margin-left: calc(-8 * var(--u)); }
+    }
+
+    /* ---- The ghost pointer (Requirement 6.1, 6.2) ---------------------- */
+    /* A semi-transparent violet ghost that replaces the system pointer while
+       it is over the phone, tilting in the direction of movement. */
+    #ghostPtr {
+      width: calc(30 * var(--u));
+      height: calc(35 * var(--u));
+      margin-left: calc(-9 * var(--u));
+      margin-top: calc(-6 * var(--u));
+      z-index: 9;
+      opacity: 0.72;
+      transform: rotate(0deg);
+      transition: transform 0.12s ease-out;
+    }
+    #ghostPtr .ghost-svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      overflow: visible;
+      filter: drop-shadow(0 calc(3 * var(--u)) calc(5 * var(--u)) rgba(0,0,0,0.25));
+    }
+    #ghostPtr .ghost-body { fill: var(--human); }
+    #ghostPtr .ghost-eye { fill: #fff; }
+    /* Squint on a click: the eyes flatten. */
+    #ghostPtr.squint .ghost-eye { transform: scaleY(0.18); transform-origin: center; transform-box: fill-box; }
+    /* The "boo!" shout that appears on a click. */
+    #ghostPtr .ghost-boo {
+      position: absolute;
+      left: calc(26 * var(--u));
+      top: calc(-6 * var(--u));
+      font-family: var(--font-head);
+      font-weight: 800;
+      font-size: calc(18 * var(--u));
+      line-height: 1;
+      color: var(--human);
+      opacity: 0;
+      transform: scale(0.6) translateY(calc(6 * var(--u)));
+      transform-origin: left center;
+      pointer-events: none;
+    }
+    #ghostPtr.boo .ghost-boo { animation: ghostBoo 0.7s ease-out forwards; }
+    @keyframes ghostBoo {
+      0% { opacity: 0; transform: scale(0.6) translateY(calc(6 * var(--u))); }
+      30% { opacity: 1; transform: scale(1.1) translateY(calc(-4 * var(--u))); }
+      70% { opacity: 1; transform: scale(1) translateY(calc(-8 * var(--u))); }
+      100% { opacity: 0; transform: scale(1) translateY(calc(-14 * var(--u))); }
+    }
+
+    /* The expanding rings on a click, and the wisps a click or drag leaves. */
+    .ghost-ring {
+      position: absolute;
+      left: 0; top: 0;
+      width: calc(16 * var(--u));
+      height: calc(16 * var(--u));
+      margin-left: calc(-8 * var(--u));
+      margin-top: calc(-8 * var(--u));
+      border-radius: 50%;
+      border: calc(2 * var(--u)) solid var(--human);
+      pointer-events: none;
+      z-index: 8;
+      animation: ghostRing 0.7s ease-out forwards;
+    }
+    @keyframes ghostRing {
+      0% { transform: scale(0.2); opacity: 0.8; }
+      100% { transform: scale(3.4); opacity: 0; }
+    }
+    .ghost-wisp {
+      position: absolute;
+      left: 0; top: 0;
+      width: calc(10 * var(--u));
+      height: calc(10 * var(--u));
+      margin-left: calc(-5 * var(--u));
+      margin-top: calc(-5 * var(--u));
+      border-radius: 50%;
+      background: var(--human);
+      opacity: 0.5;
+      pointer-events: none;
+      z-index: 7;
+      animation: ghostWisp 0.8s ease-out forwards;
+    }
+    @keyframes ghostWisp {
+      0% { transform: scale(1) translateY(0); opacity: 0.5; }
+      100% { transform: scale(0.3) translateY(calc(-16 * var(--u))); opacity: 0; }
+    }
+    /* While the ghost is active, the system cursor over the phone is hidden. */
+    #screen.ghosting { cursor: none; }
+
     /* The pair line drawn on the phone. */
     #pairs .pair-line { stroke: var(--human); stroke-width: 3; stroke-dasharray: 7 6; }
     #pairs .pair-agent { fill: var(--agent); }
@@ -613,6 +733,7 @@
     #tl .tl-agent { fill: var(--agent); }
     #tl .tl-human { fill: var(--human); }
     #tl .tl-now { stroke: var(--warn); stroke-width: 1.5; }
+    #tl .tl-empty { fill: var(--muted); font-family: var(--font-text); font-size: 13px; }
 
     /* Event-log actor colours. */
     table#log td.log-agent { color: var(--agent); }
@@ -620,6 +741,13 @@
 
     /* The screen takes pointer gestures. */
     #screen { touch-action: none; cursor: pointer; }
+    /* Requirement 6.1: over the phone the ghost replaces the system pointer, so
+       the cursor on the screen and everything inside it is hidden. Only on
+       devices with a fine, hovering pointer (a mouse or trackpad); touch
+       screens, which have no persistent pointer, are left untouched. */
+    @media (hover: hover) and (pointer: fine) {
+      #screen, #screen * { cursor: none; }
+    }
 
     /* ---- Responsive stage (Requirement 4.4) ---------------------------- */
     @media (max-width: 900px) {
@@ -636,6 +764,15 @@
       .col-left { order: 1; }
       .phone-wrap { order: 2; }
       .col-right { order: 3; }
+      /* On a narrow screen the phone must fit the column without overflow
+         (Requirement 3.5: 390px with no horizontal scroll). Cap its width to
+         the available width and derive the height from that width so the
+         430:932 aspect ratio and the 11px bezel are kept. */
+      .phone {
+        width: min(var(--phoneW), 100%);
+        height: auto;
+      }
+      #screen { height: auto; }
     }
 
     /* ---- Reduced motion ------------------------------------------------- */
@@ -702,6 +839,10 @@
                 </div>
               </div>
               <div id="window" class="status">Window: 15s. Press &ldquo;Agent step&rdquo; to begin.</div>
+              <noscript>
+                <p class="nojs">This demo needs JavaScript to respond to your clicks.
+                  Without it the phone above is a still picture and the buttons do nothing.</p>
+              </noscript>
             </div>
           </div>
         </div>
@@ -713,9 +854,16 @@
               <div id="app"><div class="title" data-id="title" style="left:5.116%;top:5.150%;width:69.767%;height:4.936%;">Messages</div><div class="hdr" data-id="hdr-pinned" style="left:5.116%;top:10.300%;width:46.512%;height:2.146%;">Pinned</div><div class="row" data-id="chat-maya" style="left:3.721%;top:12.661%;width:92.558%;height:8.155%;">Maya Chen</div><div class="hdr" data-id="hdr-earlier" style="left:0.000%;top:21.459%;width:100.000%;height:7.082%;">Earlier</div><div class="row" data-id="chat-dev" style="left:3.721%;top:29.185%;width:92.558%;height:8.155%;">Dev Team</div><div class="row" data-id="chat-mom" style="left:3.721%;top:37.983%;width:92.558%;height:8.155%;">Mom</div><div class="row" data-id="chat-delivery" style="left:3.721%;top:46.781%;width:92.558%;height:8.155%;">Delivery</div><div class="tabbar" data-id="tabbar" style="left:0.000%;top:90.773%;width:100.000%;height:9.227%;"></div><div class="tab" data-id="tab-chats" style="left:0.000%;top:91.202%;width:50.000%;height:7.511%;">Messages</div><div class="tab" data-id="tab-settings" style="left:50.000%;top:91.202%;width:50.000%;height:7.511%;">Settings</div></div>
               <div id="wantLayer"></div>
               <svg id="pairs" viewBox="0 0 430 932" preserveAspectRatio="none" aria-hidden="true"></svg>
-              <div id="aimRing"></div>
-              <div id="botCursor"></div>
-              <div id="ghostPtr"></div>
+              <div id="aimRing" hidden></div>
+              <div id="botCursor" hidden><span class="bot-bang" aria-hidden="true">!</span></div>
+              <div id="ghostPtr" hidden>
+                <svg class="ghost-svg" viewBox="0 0 24 28" aria-hidden="true">
+                  <path class="ghost-body" d="M12 1a9 9 0 0 0-9 9v14.5c0 1 1.1 1.6 2 1.1l1.5-.9c.5-.3 1.1-.3 1.6 0l1.4.9c.5.3 1.1.3 1.6 0l1.4-.9c.5-.3 1.1-.3 1.6 0l1.5.9c.9.5 2-.1 2-1.1V10a9 9 0 0 0-9-9Z"/>
+                  <circle class="ghost-eye ghost-eye-l" cx="9" cy="11" r="1.6"/>
+                  <circle class="ghost-eye ghost-eye-r" cx="15" cy="11" r="1.6"/>
+                </svg>
+                <span class="ghost-boo" aria-hidden="true">boo!</span>
+              </div>
             </div>
           </div>
         </div>
@@ -763,12 +911,13 @@
       <div class="wrap">
         <h2>The pairing rule</h2>
         <p class="sub">A human click within the correction window of an agent tap counts as
-          a correction. Three corrections whose ratios agree reveal the scale bug.</p>
+          a correction. Three corrections whose ratios agree reveal the scale bug.
+          The real server uses a 5 second window; this page lets you choose 5, 15 or 30 seconds.</p>
         <div class="rule-grid">
           <div class="card">
             <p class="col-head">Scale verdict</p>
             <div id="verdict"><span class="empty">No corrections yet &mdash; three are needed to measure the scale.</span></div>
-            <svg id="tl" viewBox="0 0 600 120" preserveAspectRatio="none" aria-label="Pairing timeline" role="img"></svg>
+            <svg id="tl" viewBox="0 0 600 120" preserveAspectRatio="none" aria-label="Pairing timeline" role="img"><text x="300" y="64" text-anchor="middle" class="tl-empty">No actions yet &mdash; the agent and human lanes will fill in here.</text></svg>
           </div>
           <div class="card">
             <p class="col-head">Event log</p>
@@ -799,8 +948,10 @@
           </div>
           <div class="card how-card">
             <h3>Pair</h3>
-            <p class="muted">A human click soon after an agent tap, and close to it, is read
-              as a correction of that tap.</p>
+            <p class="muted">A human click less than the correction window after an agent
+              tap is paired with the closest earlier agent tap that is not already paired,
+              one human click to one agent tap. There is no distance limit: distance only
+              decides between the agent taps that are still in the window.</p>
           </div>
           <div class="card how-card">
             <h3>Explain</h3>
@@ -827,7 +978,7 @@
         <div class="run-block">
           <p class="col-head">Clone the repository</p>
           <div class="codeline">
-            <pre id="cmd-clone">git clone https://github.com/example/poltergeist.git</pre>
+            <pre id="cmd-clone">git clone &lt;the address of this repository&gt;</pre>
             <button class="btn copy" type="button" data-copy="cmd-clone">Copy</button>
           </div>
         </div>
@@ -1719,6 +1870,7 @@
       var pairsSvg = document.getElementById('pairs');
       var botCursor = document.getElementById('botCursor');
       var aimRing = document.getElementById('aimRing');
+      var ghostPtr = document.getElementById('ghostPtr');
       var feedEl = document.getElementById('feed');
       var windowEl = document.getElementById('window');
       var toldBody = document.getElementById('told-body');
@@ -1754,6 +1906,11 @@
           pairLine: null,             // {agent, human, offX, offY} drawn on the phone
           busy: false,                // an agent step is animating
           auto: false,                // the automatic demo is running
+          botAim: null,               // where the agent's cursor rests, offered for a carry
+          busyTapped: false,          // the cursor has tapped; no longer carryable
+          carryStart: null,           // where a carry was picked up
+          dropPoint: null,            // where a carried cursor was dropped
+          carryHappened: false,       // a carry happened during this step
           announced: 0                // how many log entries the feed has "heard"
         };
       }
@@ -1777,6 +1934,24 @@
 
       function sleep(ms) {
         return new Promise(function (resolve) { setTimeout(resolve, ms); });
+      }
+
+      // Resolve once the agent's cursor is no longer being carried. While the
+      // human still holds it, the step waits here (the contract: a held carry
+      // keeps the step waiting). A guard caps the wait so a stuck carry cannot
+      // freeze the step forever.
+      function waitForCarryRelease() {
+        if (!carrying) return Promise.resolve();
+        return new Promise(function (resolve) {
+          var waited = 0;
+          var timer = setInterval(function () {
+            waited += 100;
+            if (!carrying || waited > 60000) {
+              clearInterval(timer);
+              resolve();
+            }
+          }, 100);
+        });
       }
 
       // ---- Rendering the phone ------------------------------------------
@@ -1807,12 +1982,77 @@
         botCursor.style.top = pct(y, SH);
       }
       function showBotCursor(show) {
-        botCursor.style.display = show ? 'block' : 'none';
-        aimRing.style.display = show ? 'block' : 'none';
+        botCursor.hidden = !show;
+        aimRing.hidden = !show;
+        if (!show) {
+          botCursor.classList.remove('scared', 'carried');
+        }
       }
       function placeAimRing(x, y) {
         aimRing.style.left = pct(x, SW);
         aimRing.style.top = pct(y, SH);
+      }
+
+      // ---- The ghost pointer (Requirement 6.1, 6.2) --------------------
+      // The ghost replaces the system pointer while it is over the phone and
+      // tilts in the direction it moves. On touch screens it appears at the
+      // touch point. Its position is held in device points.
+      var ghostLast = null;    // last device point, to measure the tilt
+      function showGhost(show) {
+        ghostPtr.hidden = !show;
+        // While the ghost is active the system cursor over the phone is hidden.
+        if (screenEl) screenEl.classList.toggle('ghosting', !!show);
+        if (!show) {
+          ghostPtr.classList.remove('squint', 'boo');
+          ghostLast = null;
+        }
+      }
+      function placeGhost(x, y) {
+        ghostPtr.style.left = pct(x, SW);
+        ghostPtr.style.top = pct(y, SH);
+        // Tilt toward the movement, clamped so it only leans a little.
+        if (ghostLast) {
+          var dx = x - ghostLast.x;
+          if (Math.abs(dx) > 0.5) {
+            var tilt = Math.max(-18, Math.min(18, dx * 1.5));
+            ghostPtr.style.transform = 'rotate(' + tilt.toFixed(1) + 'deg)';
+          }
+        }
+        ghostLast = { x: x, y: y };
+      }
+      // A short-lived overlay node placed at a device point inside the screen.
+      function spawnFx(cls, x, y) {
+        if (reduceMotion) return;
+        var node = document.createElement('div');
+        node.className = cls;
+        node.style.position = 'absolute';
+        node.style.left = pct(x, SW);
+        node.style.top = pct(y, SH);
+        screenEl.appendChild(node);
+        setTimeout(function () {
+          if (node.parentNode) node.parentNode.removeChild(node);
+        }, 900);
+      }
+      // A click: the ghost squints, two rings expand, a few wisps rise, and it
+      // calls out "boo!".
+      function ghostClickFx(x, y) {
+        ghostPtr.classList.add('squint', 'boo');
+        setTimeout(function () { ghostPtr.classList.remove('squint', 'boo'); }, 700);
+        spawnFx('ghost-ring', x, y);
+        setTimeout(function () { spawnFx('ghost-ring', x, y); }, 120);
+        for (var i = 0; i < 4; i++) {
+          var ox = x + (Math.random() - 0.5) * 36;
+          var oy = y + (Math.random() - 0.5) * 20;
+          spawnFx('ghost-wisp', ox, oy);
+        }
+      }
+      // A drag leaves a trail of wisps along its path.
+      function ghostDragFx(x0, y0, x1, y1) {
+        var steps = 6;
+        for (var i = 0; i <= steps; i++) {
+          var k = i / steps;
+          spawnFx('ghost-wisp', x0 + (x1 - x0) * k, y0 + (y1 - y0) * k);
+        }
       }
       function glideBot(x0, y0, x1, y1, ms) {
         // The promise resolves through setTimeout after the duration, so the
@@ -2018,7 +2258,9 @@
             point = pt(e.nx, e.ny);
           }
           var pairText = '\u2014';
-          if (e.actor === 'human' && pairedHuman[e.t]) {
+          if (e.carried) {
+            pairText = 'carried cursor';
+          } else if (e.actor === 'human' && pairedHuman[e.t]) {
             var m = pairedHuman[e.t];
             var secs = (m.human.t - m.agent.t) / 1000;
             pairText = 'paired, ' + fixed(secs, 1) + 's';
@@ -2026,8 +2268,9 @@
             pairText = 'agent tap';
           }
           var actorCls = e.actor === 'human' ? 'log-human' : 'log-agent';
+          var label = e.carried ? 'carried cursor' : (e.label || e.kind);
           html += '<tr><td>' + clock(e.t) + '</td><td class="' + actorCls + '">' + e.actor +
-            '</td><td>' + esc(e.label || e.kind) + '</td><td>' + esc(point) +
+            '</td><td>' + esc(label) + '</td><td>' + esc(point) +
             '</td><td>' + esc(pairText) + '</td></tr>';
         }
         logBody.innerHTML = html;
@@ -2122,19 +2365,100 @@
       }
       function winLabel() { return (S.windowMs / 1000) + 's'; }
 
-      // ---- Gestures on the phone (Requirement 6.3, 6.4) -----------------
-      var press = null;
-      function onPointerDown(ev) {
-        if (S.busy) return; // the agent is mid-step
-        var p = toDevice(ev.clientX, ev.clientY);
-        press = { x: p.x, y: p.y };
-        if (screenEl.setPointerCapture && ev.pointerId !== undefined) {
-          try { screenEl.setPointerCapture(ev.pointerId); } catch (e) {}
+      // ---- Gestures on the phone (Requirement 6, 7) --------------------
+      // Distances, in device points, for noticing and picking up the cursor.
+      var SCARE_DIST = 90;  // the cursor shakes within this of the ghost
+      var CARRY_DIST = 60;  // a press this close to the cursor picks it up
+
+      var press = null;      // the current pointer-down start, in device points
+      var carrying = false;  // is the ghost carrying the agent's cursor?
+
+      // The agent's cursor's current resting point while it waits for a carry,
+      // or null when it is not waiting. Set by the agent step.
+      // (S.botAim and S.carryHappened live on the state so reset clears them.)
+
+      // Is the agent's cursor currently waiting to be carried?
+      function botWaiting() {
+        return !botCursor.hidden && S.botAim && !S.busyTapped;
+      }
+      // Distance in device points from a point to the agent's cursor.
+      function distToBot(x, y) {
+        if (!S.botAim) return Infinity;
+        return Math.hypot(x - S.botAim.x, y - S.botAim.y);
+      }
+      // Update the "scared" state as the ghost nears the waiting cursor.
+      function updateScare(x, y) {
+        if (botWaiting() && !carrying && distToBot(x, y) <= SCARE_DIST) {
+          botCursor.classList.add('scared');
+        } else if (!carrying) {
+          botCursor.classList.remove('scared');
         }
       }
-      function onPointerUp(ev) {
-        if (!press) return;
+
+      function onPointerEnter(ev) {
         var p = toDevice(ev.clientX, ev.clientY);
+        showGhost(true);
+        placeGhost(p.x, p.y);
+      }
+      function onPointerLeave() {
+        if (press || carrying) return; // keep the ghost while a gesture is live
+        showGhost(false);
+      }
+      function onPointerMove(ev) {
+        var p = toDevice(ev.clientX, ev.clientY);
+        showGhost(true);
+        placeGhost(p.x, p.y);
+        if (carrying) {
+          // Drag the agent's cursor along with the pointer.
+          S.botAim = { x: p.x, y: p.y };
+          placeBotCursor(p.x, p.y);
+          placeAimRing(p.x, p.y);
+        } else {
+          updateScare(p.x, p.y);
+        }
+      }
+
+      function onPointerDown(ev) {
+        var p = toDevice(ev.clientX, ev.clientY);
+        showGhost(true);
+        placeGhost(p.x, p.y);
+        if (screenEl.setPointerCapture && ev.pointerId !== undefined) {
+          // The review drives the page with synthetic pointer events whose
+          // pointerId is made up, so capturing may throw; ignore that.
+          try { screenEl.setPointerCapture(ev.pointerId); } catch (e) {}
+        }
+        // Picking up the agent's cursor (Requirement 7.3): a press within
+        // CARRY_DIST of the waiting cursor starts a carry instead of a tap.
+        if (botWaiting() && distToBot(p.x, p.y) <= CARRY_DIST) {
+          carrying = true;
+          S.carryStart = { x: S.botAim.x, y: S.botAim.y };
+          botCursor.classList.add('carried');
+          botCursor.classList.remove('scared');
+          press = null;
+          return;
+        }
+        if (S.busy) return; // the agent is mid-step (and not offering a carry)
+        press = { x: p.x, y: p.y };
+      }
+      function onPointerUp(ev) {
+        var p = toDevice(ev.clientX, ev.clientY);
+        if (carrying) {
+          // Dropping the cursor (Requirement 7.3, 7.4). Record the carry as a
+          // human drag marked carried, from where the cursor was picked up to
+          // where it was dropped. No app action results from it.
+          carrying = false;
+          botCursor.classList.remove('carried', 'scared');
+          var from = S.carryStart || { x: p.x, y: p.y };
+          S.botAim = { x: p.x, y: p.y };
+          placeBotCursor(p.x, p.y);
+          placeAimRing(p.x, p.y);
+          S.dropPoint = { x: p.x, y: p.y };
+          S.carryHappened = true;
+          ghostDragFx(from.x, from.y, p.x, p.y);
+          recordCarry(from.x, from.y, p.x, p.y);
+          if (!press) return;
+        }
+        if (!press) return;
         var start = press;
         press = null;
         var dx = p.x - start.x;
@@ -2145,6 +2469,19 @@
         } else {
           humanGesture(start.x, start.y, start.x, start.y);
         }
+      }
+
+      // Record a carry as a human drag with a carried flag. It is logged so the
+      // agent can see it on its next step, but it does not touch the app.
+      function recordCarry(x0, y0, x1, y1) {
+        var a = record('human', 'drag', x0, y0, x1, y1, null, null);
+        a.carried = true;
+        // Mark the matching event too, so the log reads it as a carry.
+        if (S.events.length) S.events[S.events.length - 1].carried = true;
+        var snap = renderPanels();
+        feedAdd('watcher', '<b>watcher</b> the human carried the agent\u2019s cursor ' +
+          'from ' + pt(x0, y0) + ' to ' + pt(x1, y1) + '.');
+        return a;
       }
 
       // humanGesture applies a click or a drag of more than 8 points to the
@@ -2163,6 +2500,7 @@
           var startHit = hitTest(S.app, x0, y0);
           a = record('human', 'drag', x0, y0, x1, y1,
             startHit ? startHit.label : null, startHit ? startHit.role : null);
+          ghostDragFx(x0, y0, x1, y1);
         } else {
           // A click: tap the app at the point.
           var tap = tapApp(S.app, x0, y0);
@@ -2172,6 +2510,7 @@
           }
           a = record('human', 'click', x0, y0, null, null,
             hitEl ? hitEl.label : null, hitEl ? hitEl.role : null);
+          ghostClickFx(x0, y0);
         }
 
         renderApp();
@@ -2274,20 +2613,45 @@
 
           // Glide the cursor there, then wait for a possible carry.
           var from = { x: aimX, y: aimY };
+          // Offer the cursor for a carry: record where it rests so the ghost's
+          // proximity and a pick-up can be measured (Requirement 7.1-7.3).
+          S.botAim = { x: aimX, y: aimY };
+          S.busyTapped = false;
+          S.carryHappened = false;
+          S.dropPoint = null;
           return glideBot(aimX, aimY, aimX, aimY, glideMs).then(function () {
             placeBotCursor(aimX, aimY);
             return sleep(carryWait);
           }).then(function () {
-            // Tap for real.
-            var tap = tapApp(S.app, aimX, aimY);
+            // A carry that is still held keeps the step waiting until it is
+            // dropped (the contract: a held carry pauses the step).
+            return waitForCarryRelease();
+          }).then(function () {
+            // The cursor is no longer offered for a carry.
+            S.busyTapped = true;
+            botCursor.classList.remove('scared');
+            // Tap for real, at the drop point when the cursor was carried,
+            // otherwise at the aim point.
+            var tapX = S.dropPoint ? S.dropPoint.x : aimX;
+            var tapY = S.dropPoint ? S.dropPoint.y : aimY;
+            placeBotCursor(tapX, tapY);
+            var tap = tapApp(S.app, tapX, tapY);
             var landed = tap.hit;
             if (!tap.off) S.app = tap.app;
-            var rec = record('agent', 'click', aimX, aimY, null, null,
+            var rec = record('agent', 'click', tapX, tapY, null, null,
               landed ? landed.label : null, landed ? landed.role : null);
 
             renderApp();
-            feedAdd('action', '<b>action</b> tapped ' + pt(aimX, aimY) +
+            feedAdd('action', '<b>action</b> tapped ' + pt(tapX, tapY) +
               ' (aiming at ' + esc(choice.label) + ').');
+
+            // If the human carried the cursor just before this tap, the agent
+            // works out what happened (Requirement 7.5).
+            if (S.carryHappened) {
+              feedAdd('thinking', '<b>notice</b> the human dragged right before my ' +
+                'tap, and it landed somewhere other than where I aimed \u2014 they ' +
+                'probably picked up my cursor and carried it off.');
+            }
 
             // Look again.
             var didWork = worked(S.app, choice.id);
@@ -2307,6 +2671,7 @@
               startCountdown();
             }
 
+            S.botAim = null;
             S.stepCount += 1;
             var snap = renderPanels();
 
@@ -2464,7 +2829,10 @@
         // Reflect the currently chosen window.
         var pressed = document.querySelector('[data-win][aria-pressed="true"]');
         if (pressed) S.windowMs = parseInt(pressed.getAttribute('data-win'), 10);
+        carrying = false;
+        press = null;
         showBotCursor(false);
+        showGhost(false);
         wantLayer.innerHTML = '';
         pairsSvg.innerHTML = '';
         renderApp();
@@ -2496,9 +2864,15 @@
       if (screenEl && window.PointerEvent) {
         screenEl.addEventListener('pointerdown', onPointerDown);
         screenEl.addEventListener('pointerup', onPointerUp);
+        screenEl.addEventListener('pointermove', onPointerMove);
+        screenEl.addEventListener('pointerenter', onPointerEnter);
+        screenEl.addEventListener('pointerleave', onPointerLeave);
       } else if (screenEl) {
         screenEl.addEventListener('mousedown', onPointerDown);
         screenEl.addEventListener('mouseup', onPointerUp);
+        screenEl.addEventListener('mousemove', onPointerMove);
+        screenEl.addEventListener('mouseenter', onPointerEnter);
+        screenEl.addEventListener('mouseleave', onPointerLeave);
       }
 
       if (agentBtn) agentBtn.addEventListener('click', function () {
@@ -2533,7 +2907,10 @@
         });
       }
 
-      // The footer link to the repository, shown only when REPO_URL is set.
+      // REPO_URL drives both the footer link (Requirement 9.4) and the clone
+      // command. When it is empty the command keeps a placeholder for the
+      // address and no link is shown; when it is set, both use the real
+      // address. No address is invented here.
       var repoLink = document.getElementById('repo');
       if (repoLink) {
         if (REPO_URL) {
@@ -2543,6 +2920,46 @@
           repoLink.hidden = true;
         }
       }
+      var cloneCmd = document.getElementById('cmd-clone');
+      if (cloneCmd) {
+        cloneCmd.textContent = REPO_URL
+          ? 'git clone ' + REPO_URL
+          : 'git clone <the address of this repository>';
+      }
+
+      // The copy buttons (Requirement 9.3): copy the command's text, say
+      // "Copied" for a moment, and fall back to selecting the text when the
+      // clipboard API is not available or is refused.
+      var copyButtons = Array.prototype.slice.call(document.querySelectorAll('[data-copy]'));
+      copyButtons.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var pre = document.getElementById(btn.getAttribute('data-copy'));
+          if (!pre) return;
+          var text = pre.textContent;
+          var said = function () {
+            var original = 'Copy';
+            btn.textContent = 'Copied';
+            setTimeout(function () { btn.textContent = original; }, 1400);
+          };
+          var fallback = function () {
+            // Select the command's text so the visitor can copy it by hand.
+            try {
+              var range = document.createRange();
+              range.selectNodeContents(pre);
+              var sel = window.getSelection();
+              sel.removeAllRanges();
+              sel.addRange(range);
+            } catch (e) {}
+            btn.textContent = 'Copy it';
+            setTimeout(function () { btn.textContent = 'Copy'; }, 1400);
+          };
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(said, fallback);
+          } else {
+            fallback();
+          }
+        });
+      });
 
       // The test hook (Requirement 10).
       window.__poltergeistDemo = {

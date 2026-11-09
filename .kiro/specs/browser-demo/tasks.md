@@ -35,12 +35,12 @@ One file, `demo/index.html`, built in five stages. Stages 1 and 2 are checked by
   - [x] 4.4 The automatic demo, reset, the window selector and the test hook
     - _Requirements: 5.8, 9.1, 10.1_
 
-- [ ] 5. The ghost, the carry, and polish
-  - [ ] 5.1 The ghost pointer with its click and drag effects
+- [x] 5. The ghost, the carry, and polish
+  - [x] 5.1 The ghost pointer with its click and drag effects
     - _Requirements: 6.1, 6.2_
-  - [ ] 5.2 Carrying the agent's cursor away, and the agent's reaction
+  - [x] 5.2 Carrying the agent's cursor away, and the agent's reaction
     - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
-  - [ ] 5.3 The theme button, the copy buttons, reduced motion, and the responsive layout at 390 px
+  - [x] 5.3 The theme button, the copy buttons, reduced motion, and the responsive layout at 390 px
     - _Requirements: 3.5, 9.2, 9.3_
   - [ ] 5.4 Final check in a browser
     - _Requirements: all_
