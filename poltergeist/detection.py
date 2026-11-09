@@ -63,7 +63,12 @@ def detect_mismatches(actions: List[ClickAction]) -> List[Mismatch]:
         A list of mismatches, one per matched human click.
     """
     # Work on a time-sorted copy so callers may pass actions in any order.
-    sorted_actions = sorted(actions, key=lambda click: _parse_timestamp(click.timestamp))
+    # Only clicks take part in pairing; drags (swipes, scrolls, slider moves)
+    # are never paired, so they are filtered out before the algorithm runs.
+    sorted_actions = sorted(
+        (a for a in actions if a.kind == "click"),
+        key=lambda click: _parse_timestamp(click.timestamp),
+    )
 
     agent_times = []
     for action in sorted_actions:

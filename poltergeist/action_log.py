@@ -10,6 +10,7 @@ server belong to later stages.
 """
 
 import logging
+import math
 import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -55,6 +56,9 @@ class ClickAction:
     coordinate_space: str  # "device_points", "screen_pixels", "screenshot_pixels"
     scale_factor: float  # Conversion ratio used for normalization
     ui_element: Optional[UIElement] = None
+    kind: str = "click"  # "click" (a single press) or "drag" (press-move-release)
+    end_x: Optional[float] = None  # Normalized end point (device points); None for a click
+    end_y: Optional[float] = None  # Normalized end point (device points); None for a click
 
 
 @dataclass
@@ -180,9 +184,22 @@ class ActionLog:
         coordinate_space: str,
         scale_factor: float,
         ui_element: Optional[UIElement],
+        end: Optional[tuple] = None,
     ) -> ClickAction:
         validate_coordinate_space(coordinate_space)
         normalized_x, normalized_y = normalize_coordinates(x, y, scale_factor)
+
+        kind = "click"
+        end_x: Optional[float] = None
+        end_y: Optional[float] = None
+        if end is not None:
+            raw_end_x, raw_end_y = end
+            if not math.isfinite(raw_end_x) or not math.isfinite(raw_end_y):
+                raise ValueError("end_x and end_y must be finite")
+            # The end point is divided by the same scale factor as the start.
+            end_x, end_y = normalize_coordinates(raw_end_x, raw_end_y, scale_factor)
+            kind = "drag"
+
         action = ClickAction(
             timestamp=self._now_timestamp(),
             actor=actor,
@@ -193,6 +210,9 @@ class ActionLog:
             coordinate_space=coordinate_space,
             scale_factor=scale_factor,
             ui_element=self._prepare_ui_element(ui_element),
+            kind=kind,
+            end_x=end_x,
+            end_y=end_y,
         )
         self._actions.append(action)
         return action
@@ -224,6 +244,44 @@ class ActionLog:
         Returns the recorded :class:`ClickAction`.
         """
         return self._record("human", x, y, coordinate_space, scale_factor, ui_element)
+
+    def record_agent_drag(
+        self,
+        x: float,
+        y: float,
+        end_x: float,
+        end_y: float,
+        coordinate_space: str,
+        scale_factor: float,
+        ui_element: Optional[UIElement] = None,
+    ) -> ClickAction:
+        """Record an agent drag (press at start, release at end).
+
+        The end point is normalized with the same ``scale_factor`` as the
+        start. Returns the recorded :class:`ClickAction` with kind ``"drag"``.
+        """
+        return self._record(
+            "agent", x, y, coordinate_space, scale_factor, ui_element, end=(end_x, end_y)
+        )
+
+    def record_human_drag(
+        self,
+        x: float,
+        y: float,
+        end_x: float,
+        end_y: float,
+        coordinate_space: str,
+        scale_factor: float,
+        ui_element: Optional[UIElement] = None,
+    ) -> ClickAction:
+        """Record a human drag (press at start, release at end).
+
+        The end point is normalized with the same ``scale_factor`` as the
+        start. Returns the recorded :class:`ClickAction` with kind ``"drag"``.
+        """
+        return self._record(
+            "human", x, y, coordinate_space, scale_factor, ui_element, end=(end_x, end_y)
+        )
 
     def get_human_actions(
         self,

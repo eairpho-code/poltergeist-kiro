@@ -209,6 +209,9 @@ def _click_to_dict(click) -> dict:
         "coordinate_space": click.coordinate_space,
         "scale_factor": click.scale_factor,
         "ui_element": _ui_element_to_dict(click.ui_element),
+        "kind": click.kind,
+        "end_x": click.end_x,
+        "end_y": click.end_y,
     }
 
 
@@ -237,19 +240,24 @@ def _scale_problem_to_dict(problem) -> dict:
 _REQUIRED_HUMAN_CLICK_FIELDS = ("x", "y", "coordinate_space", "scale_factor")
 
 
-@mcp.custom_route("/human-click", methods=["POST"])
-async def handle_human_click(request: Request) -> JSONResponse:
-    """Record a human click from an external observer component.
+def _is_number(value) -> bool:
+    """True when value is a real number (and not a bool)."""
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
 
-    Expects a JSON body with ``x``, ``y``, ``coordinate_space`` and
-    ``scale_factor`` and an optional ``ui_element`` object (``role`` and
-    ``label``). Returns 200 with the recorded timestamp on success, or 400
-    with an ``error`` message on bad input.
+
+async def _handle_click(request: Request, actor: str) -> JSONResponse:
+    """Shared body parsing and recording for /human-click and /agent-click.
+
+    Accepts ``x``, ``y``, ``coordinate_space``, ``scale_factor``, an optional
+    ``ui_element`` object, and optional ``end_x`` / ``end_y``. When both end
+    coordinates are present the action is recorded as a drag; when neither is
+    present it is a click. Exactly one end coordinate is a 400 error.
     """
+    route = "/human-click" if actor == "human" else "/agent-click"
     try:
         data = await request.json()
     except Exception:
-        logger.warning("human-click: invalid JSON body")
+        logger.warning("%s: invalid JSON body", route)
         return JSONResponse({"error": "Invalid JSON"}, status_code=400)
 
     if not isinstance(data, dict):
@@ -257,7 +265,7 @@ async def handle_human_click(request: Request) -> JSONResponse:
 
     missing = [f for f in _REQUIRED_HUMAN_CLICK_FIELDS if f not in data]
     if missing:
-        logger.warning("human-click: missing fields %r", missing)
+        logger.warning("%s: missing fields %r", route, missing)
         return JSONResponse(
             {"error": f"Missing required fields: {', '.join(missing)}"},
             status_code=400,
@@ -268,11 +276,29 @@ async def handle_human_click(request: Request) -> JSONResponse:
     coordinate_space = data["coordinate_space"]
     scale_factor = data["scale_factor"]
 
+    # Optional end point: both present => drag, neither => click, one => error.
+    has_end_x = "end_x" in data and data["end_x"] is not None
+    has_end_y = "end_y" in data and data["end_y"] is not None
+    if has_end_x != has_end_y:
+        logger.warning("%s: only one end coordinate given", route)
+        return JSONResponse(
+            {"error": "end_x and end_y must be given together"}, status_code=400
+        )
+
+    end: Optional[tuple] = None
+    if has_end_x and has_end_y:
+        end_x = data["end_x"]
+        end_y = data["end_y"]
+        if not _is_number(end_x) or not _is_number(end_y):
+            logger.warning("%s: non-numeric end coordinate", route)
+            return JSONResponse({"error": "Invalid field type"}, status_code=400)
+        end = (end_x, end_y)
+
     try:
         validate_coordinate_space(coordinate_space)
         _validate_scale_factor(scale_factor)
     except ValueError as exc:
-        logger.warning("human-click: validation failed: %s", exc)
+        logger.warning("%s: validation failed: %s", route, exc)
         return JSONResponse({"error": str(exc)}, status_code=400)
 
     ui_element = None
@@ -280,27 +306,56 @@ async def handle_human_click(request: Request) -> JSONResponse:
     if isinstance(raw_ui, dict) and raw_ui.get("role"):
         ui_element = UIElement(role=raw_ui["role"], label=raw_ui.get("label"))
 
+    record = action_log.record_human_click if actor == "human" else action_log.record_agent_click
+    record_drag = action_log.record_human_drag if actor == "human" else action_log.record_agent_drag
+
     try:
-        timestamp = _record_and_timestamp(
-            action_log.record_human_click,
-            x,
-            y,
-            coordinate_space,
-            scale_factor,
-            ui_element,
-        )
+        if end is not None:
+            action = record_drag(
+                x, y, end[0], end[1], coordinate_space, scale_factor, ui_element
+            )
+        else:
+            action = record(x, y, coordinate_space, scale_factor, ui_element)
     except ValueError as exc:
-        logger.warning("human-click: validation failed: %s", exc)
+        logger.warning("%s: validation failed: %s", route, exc)
         return JSONResponse({"error": str(exc)}, status_code=400)
     except Exception:
-        logger.error("/human-click failed while recording the click", exc_info=True)
+        logger.error("%s failed while recording the click", route, exc_info=True)
         return JSONResponse({"error": "Internal server error"}, status_code=500)
 
-    logger.info("/human-click recorded at %s", timestamp)
+    logger.info("%s recorded at %s", route, action.timestamp)
     return JSONResponse(
-        {"status": "recorded", "actor": "human", "timestamp": timestamp},
+        {
+            "status": "recorded",
+            "actor": actor,
+            "kind": action.kind,
+            "timestamp": action.timestamp,
+        },
         status_code=200,
     )
+
+
+@mcp.custom_route("/human-click", methods=["POST"])
+async def handle_human_click(request: Request) -> JSONResponse:
+    """Record a human click or drag from an external observer component.
+
+    Expects a JSON body with ``x``, ``y``, ``coordinate_space`` and
+    ``scale_factor``, an optional ``ui_element`` object (``role`` and
+    ``label``), and optional ``end_x`` / ``end_y`` (both or neither) to record
+    a drag. Returns 200 with the recorded ``kind`` and ``timestamp`` on
+    success, or 400 with an ``error`` message on bad input.
+    """
+    return await _handle_click(request, actor="human")
+
+
+@mcp.custom_route("/agent-click", methods=["POST"])
+async def handle_agent_click(request: Request) -> JSONResponse:
+    """Record an agent click or drag reported over HTTP.
+
+    Accepts the same body as :func:`handle_human_click` and records the action
+    with actor ``"agent"``.
+    """
+    return await _handle_click(request, actor="agent")
 
 
 # --- Entry point ---------------------------------------------------------------

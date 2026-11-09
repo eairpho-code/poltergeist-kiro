@@ -6,20 +6,20 @@ This plan extends the Human Action Log so that an agent notices what a person do
 
 ## Tasks
 
-- [ ] 1. Record drags
-  - [ ] 1.1 Extend ClickAction and ActionLog
+- [x] 1. Record drags
+  - [x] 1.1 Extend ClickAction and ActionLog
     - Add `kind`, `end_x`, `end_y` to `ClickAction`
     - Add `record_human_drag` and `record_agent_drag`, normalizing the end point with the start point's scale factor
     - Reject a non-finite end point with `end_x and end_y must be finite`
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6_
-  - [ ] 1.2 Make mismatch detection pair clicks only
+  - [x] 1.2 Make mismatch detection pair clicks only
     - _Requirements: 2.1, 2.2_
-  - [ ] 1.3 Include `kind`, `end_x`, `end_y` in the `get_human_actions` tool result
+  - [x] 1.3 Include `kind`, `end_x`, `end_y` in the `get_human_actions` tool result
     - _Requirements: 1.7_
-  - [ ] 1.4 Accept drags on `POST /human-click`
+  - [x] 1.4 Accept drags on `POST /human-click`
     - Optional `end_x` and `end_y`, both or neither, and `kind` in the response
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
-  - [ ]* 1.5 Tests for drags: `tests/test_drags.py` (provided)
+  - [x]* 1.5 Tests for drags: `tests/test_drags.py` (provided)
 
 - [ ] 2. Agent clicks over HTTP
   - [ ] 2.1 Share the request handling between `/human-click` and the new `POST /agent-click`
