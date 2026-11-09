@@ -25,17 +25,17 @@ Each numbered group is one stage of work and ends when its checks pass. The pack
 - [x] 3. Checkpoint - The core is complete
   - Run `swift test` and ask the user if questions arise.
 
-- [ ] 4. The executable
-  - [ ] 4.1 Create `Options.swift`
+- [x] 4. The executable
+  - [x] 4.1 Create `Options.swift`
     - _Requirements: 6.1, 6.2, 6.3_
-  - [ ] 4.2 Create `ServerClient.swift`
+  - [x] 4.2 Create `ServerClient.swift`
     - _Requirements: 9.1_
-  - [ ] 4.3 Create `ClickTap.swift`
+  - [x] 4.3 Create `ClickTap.swift`
     - _Requirements: 7.1, 7.2_
-  - [ ] 4.4 Create `SimulatorScreens.swift`
+  - [x] 4.4 Create `SimulatorScreens.swift`
     - _Requirements: 8.1, 8.2, 8.3, 8.4, 10.2_
-  - [ ] 4.5 Create `main.swift`
+  - [x] 4.5 Create `main.swift`
     - _Requirements: 6.2, 7.2, 8.2, 8.4, 9.2, 9.3, 9.4, 10.1_
 
-- [ ] 5. Final checkpoint - The observer builds and runs
+- [x] 5. Final checkpoint - The observer builds and runs
   - `swift build -c release` succeeds, `--help` exits 0, a bad option exits 2, and a dry run starts and stops cleanly.
