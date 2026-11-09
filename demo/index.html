@@ -3,9 +3,749 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Poltergeist</title>
+  <title>Poltergeist Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* ---- Colour tokens -------------------------------------------------- */
+    :root {
+      --bg: #eef2f1;
+      --surface: #ffffff;
+      --ink: #0f1d1c;
+      --muted: #52676a;
+      --line: #d2dddb;
+      --human: #5836cf;
+      --agent: #b84d06;
+      --warn: #b3232b;
+
+      --font-head: "Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
+      --font-text: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --font-mono: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+
+      /* Sizing (Requirement 4 / design "Layout and sizing"). */
+      --introH: 156px;
+      --phoneH: clamp(380px, calc(100svh - 60px - var(--introH) - 34px), 780px);
+      --phoneW: calc((var(--phoneH) - 22px) / 2.1674 + 22px);
+    }
+
+    /* Dark theme: by system preference unless forced light, and by data-theme. */
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #0a1110;
+        --surface: #111b1a;
+        --ink: #e6f0ed;
+        --muted: #93a9a4;
+        --line: #223230;
+        --human: #b09dff;
+        --agent: #ffb36f;
+        --warn: #ff8084;
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg: #0a1110;
+      --surface: #111b1a;
+      --ink: #e6f0ed;
+      --muted: #93a9a4;
+      --line: #223230;
+      --human: #b09dff;
+      --agent: #ffb36f;
+      --warn: #ff8084;
+    }
+
+    /* Shorter intro room when the viewport is short. */
+    @media (max-height: 660px) {
+      :root { --introH: 92px; }
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font-text);
+      font-size: 16px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      overflow-x: hidden;
+    }
+
+    a { color: inherit; }
+
+    .wrap {
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 0 max(16px, 4vw);
+    }
+
+    h1, h2, h3 {
+      font-family: var(--font-head);
+      font-weight: 800;
+      line-height: 1.05;
+      margin: 0;
+    }
+
+    code, pre, .mono { font-family: var(--font-mono); }
+
+    .muted { color: var(--muted); }
+
+    /* ---- Top bar -------------------------------------------------------- */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      background: color-mix(in srgb, var(--bg) 88%, transparent);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--line);
+    }
+    .topbar .wrap {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      height: 60px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-head);
+      font-weight: 800;
+      font-size: 1.1rem;
+      text-decoration: none;
+    }
+    .brand .mark { width: 26px; height: 26px; display: block; color: var(--human); }
+    .nav {
+      display: flex;
+      gap: 18px;
+      margin-left: auto;
+      font-size: 0.92rem;
+    }
+    .nav a { text-decoration: none; color: var(--muted); }
+    .nav a:hover { color: var(--ink); }
+    .btn {
+      font: inherit;
+      cursor: pointer;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--ink);
+      border-radius: 10px;
+      padding: 8px 14px;
+    }
+    .btn:hover { border-color: var(--muted); }
+    #themeBtn { margin-left: 8px; }
+
+    @media (max-width: 720px) {
+      .nav { display: none; }
+      #themeBtn { margin-left: auto; }
+    }
+
+    /* ---- Intro + headline ---------------------------------------------- */
+    .intro { padding-top: 14px; }
+    .eyebrow {
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-size: 0.72rem;
+      color: var(--agent);
+      margin: 0 0 6px;
+    }
+    h1.headline {
+      font-size: clamp(1.9rem, 4.6vw, 3rem);
+    }
+    .lede {
+      margin: 8px 0 0;
+      max-width: 100ch;
+      color: var(--muted);
+      font-size: 1.02rem;
+    }
+    .lede b { color: var(--ink); font-weight: 600; }
+
+    /* ---- Stage ---------------------------------------------------------- */
+    .stage {
+      margin: 22px 0 10px;
+      display: grid;
+      grid-template-columns: minmax(230px, 1fr) var(--phoneW) minmax(260px, 1fr);
+      gap: 28px;
+      align-items: start;
+    }
+
+    .col-left, .col-right { min-width: 0; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    .steps { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 10px; }
+    .steps li { display: flex; gap: 10px; align-items: flex-start; }
+    .steps .n {
+      flex: none;
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      background: color-mix(in srgb, var(--human) 18%, transparent);
+      color: var(--human);
+      display: grid; place-items: center;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+
+    /* Hide intro chrome on short viewports. These come after the base rules
+       above and use higher-specificity selectors so they always win. */
+    @media (max-height: 760px) {
+      .col-left .steps { display: none; }
+    }
+    @media (max-height: 660px) {
+      .intro .eyebrow, .intro .lede { display: none; }
+    }
+
+    .controls { display: flex; flex-direction: column; gap: 12px; }
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn.primary {
+      background: var(--human);
+      color: #fff;
+      border-color: var(--human);
+    }
+    .btn.agentbtn {
+      background: var(--agent);
+      color: #fff;
+      border-color: var(--agent);
+    }
+
+    .winpick { display: flex; flex-direction: column; gap: 6px; }
+    .winpick .label { font-size: 0.8rem; color: var(--muted); }
+    .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; width: max-content; }
+    .seg button {
+      font: inherit;
+      font-family: var(--font-mono);
+      font-size: 0.86rem;
+      border: 0;
+      background: var(--surface);
+      color: var(--ink);
+      padding: 7px 14px;
+      cursor: pointer;
+      border-right: 1px solid var(--line);
+    }
+    .seg button:last-child { border-right: 0; }
+    .seg button[aria-pressed="true"] {
+      background: var(--human);
+      color: #fff;
+    }
+
+    .status {
+      font-family: var(--font-mono);
+      font-size: 0.86rem;
+      color: var(--muted);
+      min-height: 1.4em;
+    }
+
+    /* ---- The phone ------------------------------------------------------ */
+    .phone-wrap {
+      display: flex;
+      justify-content: center;
+    }
+    .phone {
+      position: relative;
+      width: var(--phoneW);
+      height: var(--phoneH);
+      background: #0b0b0d;
+      border-radius: 46px;
+      padding: 11px; /* 11px bezel */
+      box-shadow: 0 24px 60px -24px rgba(0,0,0,0.5);
+      flex: none;
+    }
+    /* The screen: a 430 x 932 container; sizes inside derived from its width. */
+    #screen {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      aspect-ratio: 430 / 932;
+      border-radius: 36px;
+      overflow: hidden;
+      background: #f4f6f8;
+      container-type: size;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      --u: calc(100cqw / 430); /* one device point */
+    }
+    :root[data-theme="dark"] #screen { background: #0e1413; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) #screen { background: #0e1413; }
+    }
+
+    #app { position: absolute; inset: 0; }
+
+    /* App element boxes: positioned in % of the 430 x 932 screen. */
+    #app > div {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      padding: 0 calc(16 * var(--u));
+      font-size: calc(17 * var(--u));
+      color: #10201f;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    :root[data-theme="dark"] #app > div { color: #e6f0ed; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) #app > div { color: #e6f0ed; }
+    }
+
+    #app .title { font-weight: 800; font-size: calc(30 * var(--u)); font-family: var(--font-head); }
+    #app .hdr { color: #7b8a8c; font-size: calc(13 * var(--u)); text-transform: none; font-weight: 600; }
+    #app .row {
+      background: #ffffff;
+      border-radius: calc(16 * var(--u));
+      box-shadow: 0 calc(1 * var(--u)) calc(3 * var(--u)) rgba(0,0,0,0.06);
+      font-weight: 500;
+    }
+    #app .navtitle { justify-content: center; font-weight: 600; }
+    #app .button {
+      background: color-mix(in srgb, var(--human) 14%, #fff);
+      color: var(--human);
+      border-radius: calc(14 * var(--u));
+      justify-content: center;
+      font-weight: 600;
+    }
+    #app .switch, #app .attachment {
+      background: #ffffff;
+      border-radius: calc(14 * var(--u));
+      justify-content: space-between;
+    }
+    #app .bubble {
+      background: #e9edf1;
+      border-radius: calc(18 * var(--u));
+      font-size: calc(15 * var(--u));
+    }
+    #app .photo {
+      border-radius: calc(14 * var(--u));
+      background: linear-gradient(135deg, #8ec5ff, #ffd6a5);
+      color: #10201f;
+      justify-content: center;
+      font-weight: 600;
+    }
+    #app .tabbar { background: #ffffff; border-top: 1px solid #e2e8e7; }
+    #app .tab { justify-content: center; color: #8a9a9c; font-size: calc(13 * var(--u)); }
+    #app .delivered { color: #7b8a8c; font-size: calc(12 * var(--u)); justify-content: flex-end; }
+    #app .scrim { background: rgba(0,0,0,0.35); }
+    #app .alertbox {
+      background: #fff;
+      border-radius: calc(20 * var(--u));
+      justify-content: center;
+      text-align: center;
+      font-weight: 600;
+      color: #10201f;
+    }
+    #app .toast {
+      background: rgba(16,24,23,0.9);
+      color: #fff;
+      border-radius: calc(12 * var(--u));
+      justify-content: center;
+      font-size: calc(14 * var(--u));
+    }
+    :root[data-theme="dark"] #app .row,
+    :root[data-theme="dark"] #app .switch,
+    :root[data-theme="dark"] #app .attachment,
+    :root[data-theme="dark"] #app .tabbar { background: #15201f; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) #app .row,
+      :root:not([data-theme="light"]) #app .switch,
+      :root:not([data-theme="light"]) #app .attachment,
+      :root:not([data-theme="light"]) #app .tabbar { background: #15201f; }
+    }
+
+    /* Overlay layers that the behaviour stages populate. */
+    #wantLayer, #pairs, #botCursor, #ghostPtr, #aimRing {
+      position: absolute;
+      pointer-events: none;
+    }
+    #wantLayer { inset: 0; }
+    #pairs { inset: 0; width: 100%; height: 100%; }
+    #botCursor, #ghostPtr, #aimRing { left: 0; top: 0; display: none; }
+
+    /* ---- Agent panel ---------------------------------------------------- */
+    .col-right .agent-panel {
+      height: var(--phoneH);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .panel-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .panel-head h3 { font-size: 1rem; }
+    .tag {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--agent) 18%, transparent);
+      color: var(--agent);
+    }
+    #feed {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 0.88rem;
+      flex: 1;
+    }
+    #feed li {
+      border-left: 3px solid var(--line);
+      padding: 2px 0 2px 10px;
+      color: var(--ink);
+    }
+    #feed li.empty { color: var(--muted); border-left-color: transparent; }
+
+    /* ---- Sections below the stage -------------------------------------- */
+    section { padding: 34px 0; border-top: 1px solid var(--line); }
+    section h2 { font-size: clamp(1.4rem, 3vw, 2rem); margin-bottom: 6px; }
+    section > .wrap > p.sub { color: var(--muted); margin-top: 0; max-width: 64ch; }
+
+    .told-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 760px) { .told-grid { grid-template-columns: 1fr; } }
+    #told-body, #json {
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin: 0;
+      min-height: 4em;
+      color: var(--ink);
+    }
+    .col-head { font-weight: 600; margin: 0 0 8px; font-size: 0.9rem; }
+
+    .rule-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 20px; align-items: start; }
+    @media (max-width: 860px) { .rule-grid { grid-template-columns: 1fr; } }
+
+    #verdict { font-size: 0.92rem; }
+    #verdict .empty { color: var(--muted); }
+
+    #tl {
+      width: 100%;
+      height: 120px;
+      display: block;
+      background: color-mix(in srgb, var(--surface) 70%, var(--bg));
+      border-radius: 12px;
+      border: 1px solid var(--line);
+    }
+
+    .logwrap { overflow-x: auto; }
+    table#log { border-collapse: collapse; width: 100%; font-size: 0.82rem; }
+    table#log th, table#log td {
+      text-align: left;
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--line);
+      font-family: var(--font-mono);
+      white-space: nowrap;
+    }
+    table#log th { color: var(--muted); font-weight: 500; }
+    table#log tbody:empty::after {
+      content: "No actions yet.";
+      color: var(--muted);
+    }
+
+    .how-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    @media (max-width: 860px) { .how-grid { grid-template-columns: 1fr; } }
+    .how-card h3 { font-size: 1.05rem; margin-bottom: 6px; }
+    .facts { list-style: none; margin: 18px 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    @media (max-width: 860px) { .facts { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 480px) { .facts { grid-template-columns: 1fr; } }
+    .facts li .big { font-family: var(--font-head); font-weight: 800; font-size: 1.6rem; display: block; }
+    .facts li .cap { color: var(--muted); font-size: 0.85rem; }
+
+    .run-block { margin: 0 0 16px; }
+    .run-block .col-head { display: flex; align-items: baseline; gap: 10px; }
+    .codeline { position: relative; }
+    .codeline pre {
+      margin: 0;
+      background: color-mix(in srgb, var(--ink) 92%, #000);
+      color: #e6f0ed;
+      border-radius: 12px;
+      padding: 14px 92px 14px 16px;
+      overflow-x: auto;
+      font-size: 0.86rem;
+    }
+    :root[data-theme="light"] .codeline pre { background: #10201f; }
+    .copy {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+    }
+
+    footer {
+      padding: 28px 0 48px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+    footer .wrap { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+    .nojs {
+      background: color-mix(in srgb, var(--warn) 12%, var(--surface));
+      border: 1px solid color-mix(in srgb, var(--warn) 40%, var(--line));
+      color: var(--ink);
+      border-radius: 12px;
+      padding: 10px 14px;
+      margin: 12px 0 0;
+      font-size: 0.9rem;
+    }
+    /* The JS, when it runs, hides the no-JS note. */
+    .js .nojs { display: none; }
+
+    /* ---- Responsive stage (Requirement 4.4) ---------------------------- */
+    @media (max-width: 900px) {
+      .stage {
+        grid-template-columns: minmax(230px, 1fr) var(--phoneW);
+      }
+      .col-right { grid-column: 1 / -1; }
+      .col-right .agent-panel { height: auto; max-height: 360px; }
+    }
+    @media (max-width: 640px) {
+      .stage {
+        grid-template-columns: 1fr;
+      }
+      .col-left { order: 1; }
+      .phone-wrap { order: 2; }
+      .col-right { order: 3; }
+    }
+
+    /* ---- Reduced motion ------------------------------------------------- */
+    @media (prefers-reduced-motion: reduce) {
+      * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+    }
+  </style>
 </head>
 <body>
+  <!-- Top bar -->
+  <header class="topbar">
+    <div class="wrap">
+      <a class="brand" href="#top">
+        <svg class="mark" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="currentColor" d="M12 2a8 8 0 0 0-8 8v9.2c0 .9 1 1.4 1.8 1l1.4-.8c.5-.3 1.1-.3 1.6 0l1.3.8c.5.3 1.1.3 1.6 0l1.3-.8c.5-.3 1.1-.3 1.6 0l1.4.8c.8.4 1.8-.1 1.8-1V10a8 8 0 0 0-8-8Z"/>
+          <circle cx="9.3" cy="10" r="1.3" fill="#fff"/>
+          <circle cx="14.7" cy="10" r="1.3" fill="#fff"/>
+        </svg>
+        Poltergeist
+      </a>
+      <nav class="nav">
+        <a href="#told">Context</a>
+        <a href="#rule">Pairing</a>
+        <a href="#how">How it works</a>
+        <a href="#run">Run it</a>
+      </nav>
+      <button id="themeBtn" class="btn" type="button" aria-label="Switch theme">Theme</button>
+    </div>
+  </header>
+
+  <main id="top">
+    <!-- Intro + headline -->
+    <div class="wrap intro">
+      <p class="eyebrow">Browser demo &middot; scripted agent</p>
+      <h1 class="headline">Stop haunting your agent.</h1>
+      <p class="lede">An agent sending Maya a beach photo reads screen coordinates about
+        1.5&times; too big, so its taps miss. You correct it &mdash;
+        <b>to the agent, the human is the poltergeist</b>.</p>
+    </div>
+
+    <!-- Stage -->
+    <div class="wrap">
+      <div class="stage">
+        <!-- Left column: steps, controls, window, status -->
+        <div class="col-left">
+          <div class="card">
+            <ol class="steps">
+              <li><span class="n">1</span><span>Press <b>Agent step</b> and watch its tap miss the control it meant.</span></li>
+              <li><span class="n">2</span><span>Click where it <b>should</b> have tapped. Do this three times.</span></li>
+              <li><span class="n">3</span><span>Poltergeist names the scale bug; the agent fixes itself and finishes alone.</span></li>
+            </ol>
+            <div class="controls">
+              <div class="btn-row">
+                <button id="agentBtn" class="btn agentbtn" type="button">Agent step</button>
+                <button id="autoBtn" class="btn primary" type="button">Play the story</button>
+                <button id="resetBtn" class="btn" type="button">Reset</button>
+              </div>
+              <div class="winpick">
+                <span class="label">Correction window</span>
+                <div class="seg" role="group" aria-label="Correction window">
+                  <button type="button" data-win="5000" aria-pressed="false">5s</button>
+                  <button type="button" data-win="15000" aria-pressed="true">15s</button>
+                  <button type="button" data-win="30000" aria-pressed="false">30s</button>
+                </div>
+              </div>
+              <div id="window" class="status">Window: 15s. Press &ldquo;Agent step&rdquo; to begin.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Centre: the phone -->
+        <div class="phone-wrap">
+          <div class="phone">
+            <div id="screen">
+              <div id="app"><div class="title" data-id="title" style="left:5.116%;top:5.150%;width:69.767%;height:4.936%;">Messages</div><div class="hdr" data-id="hdr-pinned" style="left:5.116%;top:10.300%;width:46.512%;height:2.146%;">Pinned</div><div class="row" data-id="chat-maya" style="left:3.721%;top:12.661%;width:92.558%;height:8.155%;">Maya Chen</div><div class="hdr" data-id="hdr-earlier" style="left:0.000%;top:21.459%;width:100.000%;height:7.082%;">Earlier</div><div class="row" data-id="chat-dev" style="left:3.721%;top:29.185%;width:92.558%;height:8.155%;">Dev Team</div><div class="row" data-id="chat-mom" style="left:3.721%;top:37.983%;width:92.558%;height:8.155%;">Mom</div><div class="row" data-id="chat-delivery" style="left:3.721%;top:46.781%;width:92.558%;height:8.155%;">Delivery</div><div class="tabbar" data-id="tabbar" style="left:0.000%;top:90.773%;width:100.000%;height:9.227%;"></div><div class="tab" data-id="tab-chats" style="left:0.000%;top:91.202%;width:50.000%;height:7.511%;">Messages</div><div class="tab" data-id="tab-settings" style="left:50.000%;top:91.202%;width:50.000%;height:7.511%;">Settings</div></div>
+              <div id="wantLayer"></div>
+              <svg id="pairs" viewBox="0 0 430 932" preserveAspectRatio="none" aria-hidden="true"></svg>
+              <div id="aimRing"></div>
+              <div id="botCursor"></div>
+              <div id="ghostPtr"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: the agent panel, as tall as the phone -->
+        <div class="col-right">
+          <div class="card agent-panel">
+            <div class="panel-head">
+              <h3>Agent</h3>
+              <span class="tag">scripted</span>
+            </div>
+            <ul id="feed">
+              <li class="empty">The agent&rsquo;s reasoning will appear here, step by step.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <p class="nojs">This demo needs JavaScript to run the agent, the ghost and the
+        live panels. The phone above shows the Messages chat list; with JavaScript off,
+        nothing moves.</p>
+    </div>
+
+    <!-- What the agent is told -->
+    <section id="told">
+      <div class="wrap">
+        <h2>What the agent is told</h2>
+        <p class="sub">When the agent takes a step, the Claude Code hook adds this text to
+          its context, and the <code>get_human_actions</code> tool returns this JSON.
+          Everything here comes from the live log.</p>
+        <div class="told-grid">
+          <div class="card">
+            <p class="col-head">Hook context</p>
+            <pre id="told-body">No human actions yet.</pre>
+          </div>
+          <div class="card">
+            <p class="col-head"><code>get_human_actions</code> &rarr; JSON</p>
+            <pre id="json">[]</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- The pairing rule: timeline + log -->
+    <section id="rule">
+      <div class="wrap">
+        <h2>The pairing rule</h2>
+        <p class="sub">A human click within the correction window of an agent tap counts as
+          a correction. Three corrections whose ratios agree reveal the scale bug.</p>
+        <div class="rule-grid">
+          <div class="card">
+            <p class="col-head">Scale verdict</p>
+            <div id="verdict"><span class="empty">No corrections yet &mdash; three are needed to measure the scale.</span></div>
+            <svg id="tl" viewBox="0 0 600 120" preserveAspectRatio="none" aria-label="Pairing timeline" role="img"></svg>
+          </div>
+          <div class="card">
+            <p class="col-head">Event log</p>
+            <div class="logwrap">
+              <table id="log">
+                <thead>
+                  <tr><th>Time</th><th>Actor</th><th>Action</th><th>Point</th><th>Pair</th></tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- How it works -->
+    <section id="how">
+      <div class="wrap">
+        <h2>How it works</h2>
+        <p class="sub">Poltergeist watches what the human does between an agent&rsquo;s steps
+          and tells the agent about it.</p>
+        <div class="how-grid">
+          <div class="card how-card">
+            <h3>Watch</h3>
+            <p class="muted">Every human click and drag is recorded in device points, with
+              the role of the control underneath it.</p>
+          </div>
+          <div class="card how-card">
+            <h3>Pair</h3>
+            <p class="muted">A human click soon after an agent tap, and close to it, is read
+              as a correction of that tap.</p>
+          </div>
+          <div class="card how-card">
+            <h3>Explain</h3>
+            <p class="muted">When corrections agree on a consistent factor, Poltergeist tells
+              the agent its coordinates are on the wrong scale.</p>
+          </div>
+        </div>
+        <ul class="facts">
+          <li><span class="big">430&times;932</span><span class="cap">device points on the phone screen</span></li>
+          <li><span class="big">1.5&times;</span><span class="cap">how far off the agent reads coordinates</span></li>
+          <li><span class="big">3</span><span class="cap">corrections needed to name the bug</span></li>
+          <li><span class="big">5&ndash;30s</span><span class="cap">the correction window you can choose</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Run it -->
+    <section id="run">
+      <div class="wrap">
+        <h2>Run it yourself</h2>
+        <p class="sub">The page is one static HTML file. Clone the repo and serve the folder,
+          or run the Python server that backs the real thing.</p>
+
+        <div class="run-block">
+          <p class="col-head">Clone the repository</p>
+          <div class="codeline">
+            <pre id="cmd-clone">git clone https://github.com/example/poltergeist.git</pre>
+            <button class="btn copy" type="button" data-copy="cmd-clone">Copy</button>
+          </div>
+        </div>
+        <div class="run-block">
+          <p class="col-head">Serve the demo folder</p>
+          <div class="codeline">
+            <pre id="cmd-serve">python -m http.server --directory demo 8000</pre>
+            <button class="btn copy" type="button" data-copy="cmd-serve">Copy</button>
+          </div>
+        </div>
+        <div class="run-block">
+          <p class="col-head">Run the checks</p>
+          <div class="codeline">
+            <pre id="cmd-check">python demo/check_port.py &amp;&amp; python demo/check_app.py</pre>
+            <button class="btn copy" type="button" data-copy="cmd-check">Copy</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <div class="wrap">
+        <span>Poltergeist &mdash; a demo of correcting an agent that misreads the screen.
+          This page runs a JavaScript port of Poltergeist&rsquo;s rules and a scripted
+          agent; the reasoning shown is <b>scripted</b>, not a language model.</span>
+        <a id="repo" href="#" hidden>Repository</a>
+      </div>
+    </footer>
+  </main>
+
   <script>
   (function () {
     'use strict';
@@ -842,6 +1582,58 @@
       return out;
     }
     // </app>
+
+    // ---- Page setup (stage 3): static document glue only ----------------
+    // Behaviour (gestures, the agent, the panels, the ghost, the carry) is
+    // added in stages 4 and 5. Here the page only marks itself as having
+    // JavaScript, applies the saved/system theme, wires the theme button and
+    // the footer's repository link, and renders the initial chat list into
+    // #app so that the markup matches screenHtml(initialApp()) exactly.
+
+    // Repository link for the footer (Requirement 9.4); empty for now.
+    var REPO_URL = '';
+
+    if (typeof document !== 'undefined') {
+      var root = document.documentElement;
+      root.classList.add('js');
+
+      // Render the initial app so a JS-enabled page matches the static markup.
+      var appEl = document.getElementById('app');
+      if (appEl) {
+        appEl.innerHTML = screenHtml(initialApp());
+      }
+
+      // Theme: follow the system by default; the button forces light/dark.
+      var themeBtn = document.getElementById('themeBtn');
+      if (themeBtn) {
+        themeBtn.addEventListener('click', function () {
+          var prefersDark = window.matchMedia &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var current = root.getAttribute('data-theme');
+          var dark;
+          if (current === 'dark') {
+            dark = false;
+          } else if (current === 'light') {
+            dark = true;
+          } else {
+            // No explicit choice yet: flip away from the system theme.
+            dark = !prefersDark;
+          }
+          root.setAttribute('data-theme', dark ? 'dark' : 'light');
+        });
+      }
+
+      // The footer link to the repository, shown only when REPO_URL is set.
+      var repoLink = document.getElementById('repo');
+      if (repoLink) {
+        if (REPO_URL) {
+          repoLink.href = REPO_URL;
+          repoLink.hidden = false;
+        } else {
+          repoLink.hidden = true;
+        }
+      }
+    }
 
     // Expose for tooling in later stages; harmless here.
     if (typeof module !== 'undefined' && module.exports) {

@@ -17,12 +17,12 @@ One file, `demo/index.html`, built in five stages. Stages 1 and 2 are checked by
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
   - [x]* 2.2 Check: `python demo/check_app.py` (provided)
 
-- [ ] 3. The page structure and the first screen
-  - [ ] 3.1 Write the document, the tokens for both themes, the fonts and the layout of the top bar, headline and stage
+- [x] 3. The page structure and the first screen
+  - [x] 3.1 Write the document, the tokens for both themes, the fonts and the layout of the top bar, headline and stage
     - _Requirements: 3.1, 3.2, 3.5, 4.1, 4.2, 4.3, 4.4_
-  - [ ] 3.2 Draw the phone from device points, with the initial chat list in the markup, and the empty states of all panels, so the page works without JavaScript
+  - [x] 3.2 Draw the phone from device points, with the initial chat list in the markup, and the empty states of all panels, so the page works without JavaScript
     - _Requirements: 3.3_
-  - [ ] 3.3 Write the sections below the stage: what the agent is told, the pairing rule (timeline and log), how it works, run it, footer; the honesty note
+  - [x] 3.3 Write the sections below the stage: what the agent is told, the pairing rule (timeline and log), how it works, run it, footer; the honesty note
     - _Requirements: 3.1, 3.4, 9.4_
 
 - [ ] 4. Behaviour
