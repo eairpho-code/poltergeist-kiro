@@ -276,6 +276,11 @@ async def _handle_click(request: Request, actor: str) -> JSONResponse:
     coordinate_space = data["coordinate_space"]
     scale_factor = data["scale_factor"]
 
+    # Coordinates must be numbers; a non-numeric value is a client error.
+    if not _is_number(x) or not _is_number(y):
+        logger.warning("%s: non-numeric coordinate", route)
+        return JSONResponse({"error": "Invalid field type"}, status_code=400)
+
     # Optional end point: both present => drag, neither => click, one => error.
     has_end_x = "end_x" in data and data["end_x"] is not None
     has_end_y = "end_y" in data and data["end_y"] is not None
@@ -303,8 +308,14 @@ async def _handle_click(request: Request, actor: str) -> JSONResponse:
 
     ui_element = None
     raw_ui = data.get("ui_element")
-    if isinstance(raw_ui, dict) and raw_ui.get("role"):
-        ui_element = UIElement(role=raw_ui["role"], label=raw_ui.get("label"))
+    if raw_ui is not None:
+        if not isinstance(raw_ui, dict):
+            logger.warning("%s: ui_element is not an object", route)
+            return JSONResponse(
+                {"error": "ui_element must be an object"}, status_code=400
+            )
+        if raw_ui.get("role"):
+            ui_element = UIElement(role=raw_ui["role"], label=raw_ui.get("label"))
 
     record = action_log.record_human_click if actor == "human" else action_log.record_agent_click
     record_drag = action_log.record_human_drag if actor == "human" else action_log.record_agent_drag

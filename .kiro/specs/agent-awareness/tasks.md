@@ -21,12 +21,12 @@ This plan extends the Human Action Log so that an agent notices what a person do
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
   - [x]* 1.5 Tests for drags: `tests/test_drags.py` (provided)
 
-- [ ] 2. Agent clicks over HTTP
-  - [ ] 2.1 Share the request handling between `/human-click` and the new `POST /agent-click`
+- [x] 2. Agent clicks over HTTP
+  - [x] 2.1 Share the request handling between `/human-click` and the new `POST /agent-click`
     - _Requirements: 4.1, 4.2, 4.3, 4.4_
-  - [ ] 2.2 Log each recorded agent click and keep agent clicks out of the human actions
+  - [x] 2.2 Log each recorded agent click and keep agent clicks out of the human actions
     - _Requirements: 4.5, 4.6_
-  - [ ]* 2.3 Tests for the endpoint: `tests/test_agent_endpoint.py` (provided)
+  - [x]* 2.3 Tests for the endpoint: `tests/test_agent_endpoint.py` (provided)
 
 - [ ] 3. Read and describe the human's actions
   - [ ] 3.1 Add `ActionLog.now()` and a public `parse_timestamp`
