@@ -101,8 +101,8 @@ This implementation builds an MCP server that records click actions from AI agen
     - Test chronological order preservation
     - _Requirements: 2.2, 2.3, 3.2, 3.3, 3.6, 4.1, 4.2, 4.3, 4.4_
 
-- [ ] 6. Implement mismatch detection algorithm
-  - [ ] 6.1 Create detect_mismatches pure function
+- [x] 6. Implement mismatch detection algorithm
+  - [x] 6.1 Create detect_mismatches pure function
     - Accept List[ClickAction] as input (chronologically ordered)
     - For each human click, scan backward 5 seconds (exclusive) for agent clicks
     - Implement one-to-one matching (agent clicks matched once only)
@@ -113,35 +113,35 @@ This implementation builds an MCP server that records click actions from AI agen
     - Implement as pure function (no clock reads, deterministic)
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6_
   
-  - [ ] 6.2 Write property test for one-to-one human click matching
+  - [x] 6.2 Write property test for one-to-one human click matching
     - **Property 2: One-to-One Human Click Matching**
     - **Validates: Requirements 6.1, 6.2**
     - Generate random action lists with Hypothesis
     - Verify each human click matches at most one agent click
     - _Requirements: 6.1, 6.2_
   
-  - [ ] 6.3 Write property test for one-to-one agent click matching
+  - [x] 6.3 Write property test for one-to-one agent click matching
     - **Property 3: One-to-One Agent Click Matching**
     - **Validates: Requirements 6.1, 6.2**
     - Generate random action lists with Hypothesis
     - Verify each agent click matches at most one human click
     - _Requirements: 6.1, 6.2_
   
-  - [ ] 6.4 Write property test for minimum distance matching
+  - [x] 6.4 Write property test for minimum distance matching
     - **Property 4: Minimum Distance Matching**
     - **Validates: Requirements 6.2**
     - Generate human click with 2-5 agent clicks in window
     - Verify matched agent click is closest by Euclidean distance
     - _Requirements: 6.2_
   
-  - [ ] 6.5 Write property test for temporal window boundary
+  - [x] 6.5 Write property test for temporal window boundary
     - **Property 6: Temporal Window Boundary**
     - **Validates: Requirements 6.1**
     - Generate agent and human clicks with time delta ≥ 5 seconds
     - Verify no mismatch created (exclusive boundary)
     - _Requirements: 6.1_
   
-  - [ ] 6.6 Write unit tests for mismatch detection
+  - [x] 6.6 Write unit tests for mismatch detection
     - Test agent click followed 2s later by human click creates mismatch
     - Test agent click followed 6s later by human click creates no mismatch
     - Test human click with no prior agent clicks creates no mismatch
@@ -151,8 +151,8 @@ This implementation builds an MCP server that records click actions from AI agen
     - Test exact 5-second boundary (exclusive)
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
 
-- [ ] 7. Implement coordinate scale problem detection
-  - [ ] 7.1 Create detect_scale_problem pure function
+- [x] 7. Implement coordinate scale problem detection
+  - [x] 7.1 Create detect_scale_problem pure function
     - Accept List[Mismatch] as input
     - Calculate scale_x = agent_x / human_x, scale_y = agent_y / human_y for each mismatch
     - Exclude samples where |human_x| < 1.0 or |human_y| < 1.0
@@ -163,7 +163,7 @@ This implementation builds an MCP server that records click actions from AI agen
     - Implement as pure function
     - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6_
   
-  - [ ] 7.2 Write property test for scale factor recovery
+  - [x] 7.2 Write property test for scale factor recovery
     - **Property 5: Scale Factor Recovery**
     - **Validates: Requirements 7.1, 7.2, 7.3, 7.4**
     - Generate agent clicks and scale factor k with Hypothesis
@@ -173,7 +173,7 @@ This implementation builds an MCP server that records click actions from AI agen
     - Verify detected scale_x and scale_y recover k within 1% error
     - _Requirements: 7.1, 7.2, 7.3, 7.4_
   
-  - [ ] 7.3 Write unit tests for scale problem detection
+  - [x] 7.3 Write unit tests for scale problem detection
     - Test 3 mismatches with consistent 2x ratio flag scale problem
     - Test 3 mismatches with inconsistent ratios (>10% spread) do not flag
     - Test 2 mismatches do not trigger detection (need 3+)
@@ -181,7 +181,7 @@ This implementation builds an MCP server that records click actions from AI agen
     - Test all mismatches near zero produce no scale problem
     - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
 
-- [ ] 8. Checkpoint - Core algorithms validated
+- [x] 8. Checkpoint - Core algorithms validated
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 9. Implement ActionLog query methods
