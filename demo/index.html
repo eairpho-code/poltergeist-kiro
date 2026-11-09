@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Poltergeist</title>
+</head>
+<body>
+  <script>
+  (function () {
+    'use strict';
+
+    // <core>
+    // Constants (milliseconds for time).
+    var WINDOW_MS = 5000;
+    var MAX_SPREAD = 0.10;
+    var MIN_SAMPLES = 3;
+    var NEAR_ZERO = 1.0;
+
+    // makeAction builds a normalized action record. nx, ny are x/scale, y/scale.
+    // For a drag, endX/endY are divided by scale too; for a click they are null.
+    function makeAction(actor, kind, x, y, endX, endY, scale, t) {
+      var ex = null;
+      var ey = null;
+      if (kind === 'drag') {
+        ex = endX / scale;
+        ey = endY / scale;
+      }
+      return {
+        actor: actor,
+        kind: kind,
+        t: t,
+        nx: x / scale,
+        ny: y / scale,
+        rawX: x,
+        rawY: y,
+        scale: scale,
+        endX: ex,
+        endY: ey
+      };
+    }
+
+    // detectMismatches pairs each human click with the agent click it most
+    // likely corrected: the closest unmatched agent click strictly within the
+    // preceding windowMs. Clicks only; one to one; first in time order on ties.
+    function detectMismatches(actions, windowMs) {
+      if (windowMs === undefined) {
+        windowMs = WINDOW_MS;
+      }
+
+      // Stable sort by timestamp, clicks only.
+      var sorted = actions
+        .map(function (a, i) { return { a: a, i: i }; })
+        .filter(function (p) { return p.a.kind === 'click'; })
+        .sort(function (p, q) {
+          if (p.a.t < q.a.t) return -1;
+          if (p.a.t > q.a.t) return 1;
+          return p.i - q.i;
+        })
+        .map(function (p) { return p.a; });
+
+      // Agent clicks in time-sorted order.
+      var agents = [];
+      for (var k = 0; k < sorted.length; k++) {
+        if (sorted[k].actor === 'agent') {
+          agents.push(sorted[k]);
+        }
+      }
+
+      var matched = [];
+      var mismatches = [];
+
+      for (var h = 0; h < sorted.length; h++) {
+        var human = sorted[h];
+        if (human.actor !== 'human') {
+          continue;
+        }
+
+        var bestAgent = null;
+        var bestDistance = Infinity;
+
+        for (var g = 0; g < agents.length; g++) {
+          if (matched[g]) {
+            continue;
+          }
+          var agent = agents[g];
+          var delta = human.t - agent.t;
+          // Agent must precede the human (delta > 0) and fall strictly inside
+          // the window (delta < windowMs).
+          if (delta <= 0 || delta >= windowMs) {
+            continue;
+          }
+          var dx = human.nx - agent.nx;
+          var dy = human.ny - agent.ny;
+          var distance = Math.hypot(dx, dy);
+          if (distance < bestDistance) {
+            bestDistance = distance;
+            bestAgent = g;
+          }
+        }
+
+        if (bestAgent === null) {
+          continue;
+        }
+
+        matched[bestAgent] = true;
+        var chosen = agents[bestAgent];
+        mismatches.push({
+          agent: chosen,
+          human: human,
+          offX: human.nx - chosen.nx,
+          offY: human.ny - chosen.ny,
+          distance: bestDistance
+        });
+      }
+
+      return mismatches;
+    }
+
+    function mean(values) {
+      var total = 0;
+      for (var i = 0; i < values.length; i++) {
+        total += values[i];
+      }
+      return total / values.length;
+    }
+
+    function populationStd(values, m) {
+      var total = 0;
+      for (var i = 0; i < values.length; i++) {
+        var d = values[i] - m;
+        total += d * d;
+      }
+      return Math.sqrt(total / values.length);
+    }
+
+    // relSpread returns the population std dev divided by the absolute mean.
+    function relSpread(values) {
+      var m = mean(values);
+      return populationStd(values, m) / m;
+    }
+
+    // detectScaleProblem returns null or the scale problem. A pair is skipped
+    // when a human coordinate is closer to zero than NEAR_ZERO. At least
+    // MIN_SAMPLES pairs are needed; a non-positive mean never qualifies; and
+    // the relative spread must not exceed MAX_SPREAD on either axis.
+    function detectScaleProblem(mismatches) {
+      var scaleXs = [];
+      var scaleYs = [];
+
+      for (var i = 0; i < mismatches.length; i++) {
+        var m = mismatches[i];
+        var humanX = m.human.nx;
+        var humanY = m.human.ny;
+        if (Math.abs(humanX) < NEAR_ZERO || Math.abs(humanY) < NEAR_ZERO) {
+          continue;
+        }
+        scaleXs.push(m.agent.nx / humanX);
+        scaleYs.push(m.agent.ny / humanY);
+      }
+
+      var sampleSize = scaleXs.length;
+      if (sampleSize < MIN_SAMPLES) {
+        return null;
+      }
+
+      var meanX = mean(scaleXs);
+      var meanY = mean(scaleYs);
+
+      if (meanX <= 0 || meanY <= 0) {
+        return null;
+      }
+
+      var spreadX = populationStd(scaleXs, meanX) / meanX;
+      var spreadY = populationStd(scaleYs, meanY) / meanY;
+
+      if (spreadX > MAX_SPREAD || spreadY > MAX_SPREAD) {
+        return null;
+      }
+
+      return {
+        sampleSize: sampleSize,
+        scaleX: meanX,
+        scaleY: meanY,
+        spreadX: spreadX,
+        spreadY: spreadY
+      };
+    }
+
+    // fixed(v, n) formats a number like Python's format(v, '.<n>f'): round the
+    // exact binary value of the double to n decimals, ties to the even digit.
+    function fixed(v, n) {
+      if (!isFinite(v)) {
+        if (v !== v) return 'nan';
+        return v > 0 ? 'inf' : '-inf';
+      }
+
+      var negative = false;
+      // Preserve a signed zero's sign the way Python does.
+      if (v < 0 || (v === 0 && 1 / v === -Infinity)) {
+        negative = true;
+        v = -v;
+      }
+
+      // Exact decimal expansion of the (non-negative) double.
+      var exact = exactDecimal(v); // { intPart: BigInt, fracDigits: string }
+      var intPart = exact.intPart;
+      var frac = exact.fracDigits;
+
+      // We keep n fractional digits; the (n+1)-th and the rest decide rounding.
+      var kept = frac.slice(0, n);
+      while (kept.length < n) {
+        kept += '0';
+      }
+      var rest = frac.slice(n);
+
+      var roundUp = false;
+      if (rest.length > 0) {
+        var firstDrop = rest.charCodeAt(0) - 48;
+        if (firstDrop > 5) {
+          roundUp = true;
+        } else if (firstDrop < 5) {
+          roundUp = false;
+        } else {
+          // firstDrop === 5: look at whether anything nonzero follows.
+          var tail = rest.slice(1);
+          var nonZeroTail = false;
+          for (var i = 0; i < tail.length; i++) {
+            if (tail.charCodeAt(i) !== 48) {
+              nonZeroTail = true;
+              break;
+            }
+          }
+          if (nonZeroTail) {
+            roundUp = true;
+          } else {
+            // Exact half: round to even on the last kept digit.
+            var lastKept;
+            if (n > 0) {
+              lastKept = kept.charCodeAt(n - 1) - 48;
+            } else {
+              lastKept = Number(intPart % 10n);
+            }
+            roundUp = (lastKept % 2) === 1;
+          }
+        }
+      }
+
+      // Combine integer and kept fractional digits into one big integer, add
+      // the rounding increment, then split back out.
+      var combined = intPart * pow10(n) + BigInt(kept === '' ? '0' : kept);
+      if (roundUp) {
+        combined += 1n;
+      }
+
+      var digits = combined.toString();
+      var intStr;
+      var fracStr;
+      if (n === 0) {
+        intStr = digits;
+        fracStr = '';
+      } else {
+        while (digits.length <= n) {
+          digits = '0' + digits;
+        }
+        intStr = digits.slice(0, digits.length - n);
+        fracStr = digits.slice(digits.length - n);
+      }
+
+      var out = intStr;
+      if (n > 0) {
+        out += '.' + fracStr;
+      }
+      return negative ? '-' + out : out;
+    }
+
+    function pow10(n) {
+      var result = 1n;
+      for (var i = 0; i < n; i++) {
+        result *= 10n;
+      }
+      return result;
+    }
+
+    // exactDecimal returns the exact decimal expansion of a finite, non-negative
+    // double as an integer BigInt part and a string of fractional digits.
+    function exactDecimal(v) {
+      if (v === 0) {
+        return { intPart: 0n, fracDigits: '' };
+      }
+
+      // Decompose the double into mantissa and exponent: v = mantissa * 2^exp,
+      // with mantissa an integer. DataView gives the raw IEEE 754 bits.
+      var buf = new ArrayBuffer(8);
+      var dv = new DataView(buf);
+      dv.setFloat64(0, v);
+      var high = dv.getUint32(0);
+      var low = dv.getUint32(4);
+
+      var rawExp = (high >>> 20) & 0x7ff;
+      var mantHigh = high & 0xfffff; // 20 bits
+      var mantissa = (BigInt(mantHigh) << 32n) | BigInt(low >>> 0);
+
+      var exp;
+      if (rawExp === 0) {
+        // Subnormal: no implicit leading bit.
+        exp = -1074;
+      } else {
+        // Normal: add the implicit leading 1 bit at position 52.
+        mantissa |= (1n << 52n);
+        exp = rawExp - 1075; // 1023 bias + 52 fraction bits.
+      }
+
+      var intPart;
+      var fracDigits;
+      if (exp >= 0) {
+        intPart = mantissa << BigInt(exp);
+        fracDigits = '';
+      } else {
+        var shift = BigInt(-exp);
+        var denom = 1n << shift; // 2^(-exp)
+        intPart = mantissa >> shift;
+        var remainder = mantissa - (intPart << shift);
+        // The fractional part equals remainder / 2^(-exp). Multiplying by
+        // 10^(-exp) yields an exact integer, since 10^k is divisible by 2^k.
+        var scaled = remainder * pow10(Number(shift));
+        var fracInt = scaled / denom; // exact division
+        fracDigits = fracInt.toString();
+        // Pad on the left so the string has exactly (-exp) digits.
+        while (fracDigits.length < Number(shift)) {
+          fracDigits = '0' + fracDigits;
+        }
+        // Strip trailing zeros; they do not affect rounding.
+        fracDigits = fracDigits.replace(/0+$/, '');
+      }
+
+      return { intPart: intPart, fracDigits: fracDigits };
+    }
+
+    // pt(x, y) -> "(x, y)" with one decimal each.
+    function pt(x, y) {
+      return '(' + fixed(x, 1) + ', ' + fixed(y, 1) + ')';
+    }
+
+    // signed(v) -> a signed one-decimal string, always a leading + or -.
+    function signed(v) {
+      var body = fixed(Math.abs(v), 1);
+      // Python's +.1f uses '-' only for negative values; 0.0 gets a '+'.
+      var isNegative = (v < 0) || (v === 0 && 1 / v === -Infinity);
+      return (isNegative ? '-' : '+') + body;
+    }
+
+    // clock(t) -> "HH:MM:SS" of the UTC time of the millisecond timestamp.
+    function clock(t) {
+      var d = new Date(t);
+      function two(n) {
+        return n < 10 ? '0' + n : '' + n;
+      }
+      return two(d.getUTCHours()) + ':' + two(d.getUTCMinutes()) + ':' + two(d.getUTCSeconds());
+    }
+
+    // describeAction: one sentence for a human action.
+    function describeAction(action, role) {
+      var start = pt(action.nx, action.ny);
+      var body;
+      if (action.kind === 'drag') {
+        var end = pt(action.endX, action.endY);
+        body = 'the human dragged from ' + start + ' to ' + end;
+      } else {
+        body = 'the human clicked ' + start;
+      }
+      if (role !== null && role !== undefined) {
+        body += ' on a ' + role;
+      }
+      return body + ' at ' + clock(action.t) + ' UTC';
+    }
+
+    // describeMismatch: how long after and how far off the human clicked.
+    function describeMismatch(m) {
+      var seconds = (m.human.t - m.agent.t) / 1000;
+      var humanPoint = pt(m.human.nx, m.human.ny);
+      var agentPoint = pt(m.agent.nx, m.agent.ny);
+      var offset = '(' + signed(m.offX) + ', ' + signed(m.offY) + ')';
+      return 'the human\u0027s click at ' + humanPoint + ' came ' + fixed(seconds, 1) +
+        's after the agent\u0027s click at ' + agentPoint + ', offset ' + offset +
+        ': that click probably missed or did something the human did not want';
+    }
+
+    // describeScale: a coordinate scale problem in words.
+    function describeScale(p) {
+      return 'the agent\u0027s clicks miss by a consistent factor of about x' +
+        fixed(p.scaleX, 2) + ' horizontally and x' + fixed(p.scaleY, 2) +
+        ' vertically (' + p.sampleSize + ' samples): its coordinates are ' +
+        'probably on the wrong scale';
+    }
+    // </core>
+
+    // Expose for tooling in later stages; harmless here.
+    if (typeof module !== 'undefined' && module.exports) {
+      module.exports = {
+        makeAction: makeAction,
+        detectMismatches: detectMismatches,
+        detectScaleProblem: detectScaleProblem,
+        describeAction: describeAction,
+        describeMismatch: describeMismatch,
+        describeScale: describeScale
+      };
+    }
+  })();
+  </script>
+</body>
+</html>

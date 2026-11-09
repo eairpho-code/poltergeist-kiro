@@ -6,11 +6,11 @@ One file, `demo/index.html`, built in five stages. Stages 1 and 2 are checked by
 
 ## Tasks
 
-- [ ] 1. The core
-  - [ ] 1.1 Create `demo/index.html` with the script wrapped in a function and the core between the `// <core>` markers
+- [x] 1. The core
+  - [x] 1.1 Create `demo/index.html` with the script wrapped in a function and the core between the `// <core>` markers
     - `makeAction`, `detectMismatches`, `detectScaleProblem`, the formatting helpers and the three describe functions
     - _Requirements: 1.1, 1.2, 1.3, 1.4_
-  - [ ]* 1.2 Check: `python demo/check_port.py` (provided)
+  - [x]* 1.2 Check: `python demo/check_port.py` (provided)
 
 - [ ] 2. The app
   - [ ] 2.1 Add the app between the `// <app>` markers: state, elements, hit testing, taps, swipes, policy, `worked`, `screenHtml`
