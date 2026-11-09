@@ -6,12 +6,12 @@ Each numbered group is one stage of work and ends when its checks pass. The pack
 
 ## Tasks
 
-- [ ] 1. Map points and parse simctl output
-  - [ ] 1.1 Create `SimulatorScreen.swift` with `DeviceProfile`, `SimulatorScreen` and `ScreenLookup`
+- [x] 1. Map points and parse simctl output
+  - [x] 1.1 Create `SimulatorScreen.swift` with `DeviceProfile`, `SimulatorScreen` and `ScreenLookup`
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6_
-  - [ ] 1.2 Create `SimctlParsing.swift`
+  - [x] 1.2 Create `SimctlParsing.swift`
     - _Requirements: 2.1, 2.2, 2.3, 2.4_
-  - [ ]* 1.3 Unit tests: `SimulatorScreenTests` and `SimctlParsingTests` (provided)
+  - [x]* 1.3 Unit tests: `SimulatorScreenTests` and `SimctlParsingTests` (provided)
 
 - [ ] 2. Request bodies, who clicked, and clicks versus drags
   - [ ] 2.1 Create `ClickPayload.swift` with `ClickPayload`, `UIElementPayload`, `Labels` and `RoleNames`
