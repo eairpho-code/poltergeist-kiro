@@ -25,14 +25,14 @@ One file, `demo/index.html`, built in five stages. Stages 1 and 2 are checked by
   - [x] 3.3 Write the sections below the stage: what the agent is told, the pairing rule (timeline and log), how it works, run it, footer; the honesty note
     - _Requirements: 3.1, 3.4, 9.4_
 
-- [ ] 4. Behaviour
-  - [ ] 4.1 Gestures on the phone, the human actions log, `snapshot()`, and the live watcher lines
+- [x] 4. Behaviour
+  - [x] 4.1 Gestures on the phone, the human actions log, `snapshot()`, and the live watcher lines
     - _Requirements: 6.3, 6.4_
-  - [ ] 4.2 The agent step, the feed, the correction window with its countdown, pairing messages, self-correction and the end of the task
+  - [x] 4.2 The agent step, the feed, the correction window with its countdown, pairing messages, self-correction and the end of the task
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8_
-  - [ ] 4.3 The panels: hook text and raw JSON, scale card, timeline, event log, pair lines on the phone
+  - [x] 4.3 The panels: hook text and raw JSON, scale card, timeline, event log, pair lines on the phone
     - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
-  - [ ] 4.4 The automatic demo, reset, the window selector and the test hook
+  - [x] 4.4 The automatic demo, reset, the window selector and the test hook
     - _Requirements: 5.8, 9.1, 10.1_
 
 - [ ] 5. The ghost, the carry, and polish

@@ -509,6 +509,118 @@
     /* The JS, when it runs, hides the no-JS note. */
     .js .nojs { display: none; }
 
+    /* ---- Stage 4 overlays and panels ----------------------------------- */
+    /* The control the agent meant: a dashed outline and a pulsing dot. */
+    .want-box {
+      position: absolute;
+      transform: translate(0, 0);
+      border: calc(2 * var(--u)) dashed var(--agent);
+      border-radius: calc(12 * var(--u));
+      box-sizing: border-box;
+      background: color-mix(in srgb, var(--agent) 8%, transparent);
+    }
+    .want-dot {
+      position: absolute;
+      width: calc(14 * var(--u));
+      height: calc(14 * var(--u));
+      margin-left: calc(-7 * var(--u));
+      margin-top: calc(-7 * var(--u));
+      border-radius: 50%;
+      background: var(--agent);
+      box-shadow: 0 0 0 calc(4 * var(--u)) color-mix(in srgb, var(--agent) 30%, transparent);
+      animation: wantPulse 1.2s ease-out infinite;
+    }
+    @keyframes wantPulse {
+      0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--agent) 45%, transparent); }
+      100% { box-shadow: 0 0 0 calc(18 * var(--u)) transparent; }
+    }
+
+    /* The agent's cursor and its aim ring. */
+    #botCursor {
+      width: calc(22 * var(--u));
+      height: calc(22 * var(--u));
+      margin-left: calc(-11 * var(--u));
+      margin-top: calc(-11 * var(--u));
+      border-radius: calc(6 * var(--u));
+      background: var(--agent);
+      box-shadow: 0 calc(2 * var(--u)) calc(8 * var(--u)) rgba(0,0,0,0.3);
+      z-index: 6;
+    }
+    #botCursor::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: calc(-10 * var(--u));
+      width: calc(2 * var(--u));
+      height: calc(10 * var(--u));
+      transform: translateX(-50%);
+      background: var(--agent);
+    }
+    #aimRing {
+      width: calc(40 * var(--u));
+      height: calc(40 * var(--u));
+      margin-left: calc(-20 * var(--u));
+      margin-top: calc(-20 * var(--u));
+      border-radius: 50%;
+      border: calc(2 * var(--u)) solid color-mix(in srgb, var(--agent) 60%, transparent);
+      z-index: 5;
+    }
+
+    /* The pair line drawn on the phone. */
+    #pairs .pair-line { stroke: var(--human); stroke-width: 3; stroke-dasharray: 7 6; }
+    #pairs .pair-agent { fill: var(--agent); }
+    #pairs .pair-human { fill: var(--human); }
+    #pairs .pair-text {
+      fill: var(--human);
+      font-family: var(--font-mono);
+      font-size: 20px;
+      font-weight: 600;
+      paint-order: stroke;
+      stroke: var(--surface);
+      stroke-width: 5;
+    }
+
+    /* Feed kinds. */
+    #feed li.feed-task { border-left-color: var(--ink); }
+    #feed li.feed-thinking { border-left-color: var(--agent); color: var(--muted); }
+    #feed li.feed-action { border-left-color: var(--agent); }
+    #feed li.feed-result { border-left-color: var(--line); }
+    #feed li.feed-hook {
+      border-left-color: var(--human);
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    #feed li.feed-watcher {
+      border-left-color: var(--human);
+      color: var(--human);
+    }
+    #feed li.feed-done {
+      border-left-color: var(--human);
+      font-weight: 600;
+    }
+    #feed li b { font-family: var(--font-mono); font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; margin-right: 6px; }
+
+    /* The scale verdict card. */
+    #verdict .verdict-head { font-weight: 700; margin: 0 0 6px; color: var(--human); }
+    #verdict p { margin: 0 0 6px; }
+
+    /* The timeline. */
+    #tl .tl-lane { stroke: var(--line); stroke-width: 2; }
+    #tl .tl-label { fill: var(--muted); font-family: var(--font-mono); font-size: 11px; }
+    #tl .tl-window { fill: color-mix(in srgb, var(--agent) 24%, transparent); }
+    #tl .tl-pair { stroke: var(--human); stroke-width: 1.5; stroke-dasharray: 4 4; }
+    #tl .tl-agent { fill: var(--agent); }
+    #tl .tl-human { fill: var(--human); }
+    #tl .tl-now { stroke: var(--warn); stroke-width: 1.5; }
+
+    /* Event-log actor colours. */
+    table#log td.log-agent { color: var(--agent); }
+    table#log td.log-human { color: var(--human); }
+
+    /* The screen takes pointer gestures. */
+    #screen { touch-action: none; cursor: pointer; }
+
     /* ---- Responsive stage (Requirement 4.4) ---------------------------- */
     @media (max-width: 900px) {
       .stage {
@@ -1583,25 +1695,824 @@
     }
     // </app>
 
-    // ---- Page setup (stage 3): static document glue only ----------------
-    // Behaviour (gestures, the agent, the panels, the ghost, the carry) is
-    // added in stages 4 and 5. Here the page only marks itself as having
-    // JavaScript, applies the saved/system theme, wires the theme button and
-    // the footer's repository link, and renders the initial chat list into
-    // #app so that the markup matches screenHtml(initialApp()) exactly.
+    // ---- Page behaviour (stage 4) ---------------------------------------
+    // The page code below the core and the app. It uses the browser: it draws
+    // the app, reads pointer gestures on the phone, drives the scripted agent,
+    // writes the feed and the panels, runs the automatic demo, and exposes the
+    // test hook. The ghost pointer, the carried cursor, the theme behaviour
+    // beyond the stage-3 wiring, and the copy buttons belong to stage 5.
 
     // Repository link for the footer (Requirement 9.4); empty for now.
     var REPO_URL = '';
+
+    // The agent reads a control's centre this many times too big on each axis.
+    var BUG = 1.5;
 
     if (typeof document !== 'undefined') {
       var root = document.documentElement;
       root.classList.add('js');
 
-      // Render the initial app so a JS-enabled page matches the static markup.
+      // ---- Element handles ----------------------------------------------
       var appEl = document.getElementById('app');
-      if (appEl) {
-        appEl.innerHTML = screenHtml(initialApp());
+      var screenEl = document.getElementById('screen');
+      var wantLayer = document.getElementById('wantLayer');
+      var pairsSvg = document.getElementById('pairs');
+      var botCursor = document.getElementById('botCursor');
+      var aimRing = document.getElementById('aimRing');
+      var feedEl = document.getElementById('feed');
+      var windowEl = document.getElementById('window');
+      var toldBody = document.getElementById('told-body');
+      var jsonEl = document.getElementById('json');
+      var verdictEl = document.getElementById('verdict');
+      var tlEl = document.getElementById('tl');
+      var logBody = document.querySelector('#log tbody');
+      var agentBtn = document.getElementById('agentBtn');
+      var autoBtn = document.getElementById('autoBtn');
+      var resetBtn = document.getElementById('resetBtn');
+      var winButtons = Array.prototype.slice.call(document.querySelectorAll('[data-win]'));
+
+      // Does the reviewer want motion kept short?
+      var reduceMotion = window.matchMedia &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      // ---- Page state ---------------------------------------------------
+      // The live log holds every recorded action (agent and human), oldest
+      // first, as makeAction records with a role/label attached. events holds a
+      // parallel human-readable record for the event log and the timeline.
+      var S;
+      function freshState() {
+        return {
+          app: initialApp(),          // the phone's app state
+          log: [],                    // makeAction records, oldest first
+          events: [],                 // {t, actor, kind, nx, ny, endX, endY, label, role, pairedWith}
+          windowMs: 15000,            // correction window
+          stepCount: 0,               // agent steps taken
+          corrected: false,          // has the agent divided out its scale?
+          factorX: 1, factorY: 1,     // measured factors once corrected
+          want: null,                 // the control the agent meant, when it missed
+          countdownUntil: 0,          // wall-clock ms the current window closes at
+          pairLine: null,             // {agent, human, offX, offY} drawn on the phone
+          busy: false,                // an agent step is animating
+          auto: false,                // the automatic demo is running
+          announced: 0                // how many log entries the feed has "heard"
+        };
       }
+
+      // ---- Small helpers ------------------------------------------------
+      function esc(text) {
+        return String(text)
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      }
+
+      // Convert a client point on the screen element into device points.
+      function toDevice(clientX, clientY) {
+        var rect = screenEl.getBoundingClientRect();
+        var x = (clientX - rect.left) / rect.width * SW;
+        var y = (clientY - rect.top) / rect.height * SH;
+        return { x: x, y: y };
+      }
+
+      // Percentages of the 430 x 932 screen, for overlay boxes.
+      function pct(v, span) { return (v / span * 100).toFixed(3) + '%'; }
+
+      function sleep(ms) {
+        return new Promise(function (resolve) { setTimeout(resolve, ms); });
+      }
+
+      // ---- Rendering the phone ------------------------------------------
+      function renderApp() {
+        appEl.innerHTML = screenHtml(S.app);
+      }
+
+      // The control the agent meant: a dashed outline and a pulsing dot.
+      function renderWant() {
+        if (!S.want) {
+          wantLayer.innerHTML = '';
+          return;
+        }
+        var e = S.want;
+        var box = '<div class="want-box" style="left:' + pct(e.x, SW) +
+          ';top:' + pct(e.y, SH) + ';width:' + pct(e.w, SW) +
+          ';height:' + pct(e.h, SH) + ';"></div>';
+        var cx = e.x + e.w / 2;
+        var cy = e.y + e.h / 2;
+        var dot = '<div class="want-dot" style="left:' + pct(cx, SW) +
+          ';top:' + pct(cy, SH) + ';"></div>';
+        wantLayer.innerHTML = box + dot;
+      }
+
+      // The agent's cursor glides to a device point over a duration.
+      function placeBotCursor(x, y) {
+        botCursor.style.left = pct(x, SW);
+        botCursor.style.top = pct(y, SH);
+      }
+      function showBotCursor(show) {
+        botCursor.style.display = show ? 'block' : 'none';
+        aimRing.style.display = show ? 'block' : 'none';
+      }
+      function placeAimRing(x, y) {
+        aimRing.style.left = pct(x, SW);
+        aimRing.style.top = pct(y, SH);
+      }
+      function glideBot(x0, y0, x1, y1, ms) {
+        // The promise resolves through setTimeout after the duration, so the
+        // step sequencing never depends on the page painting (a background
+        // tab or an embedded pane may never fire requestAnimationFrame). The
+        // visual movement still animates with requestAnimationFrame when the
+        // page is painting, but the promise does not wait on it.
+        showBotCursor(true);
+        placeAimRing(x1, y1);
+        placeBotCursor(x1, y1); // snap to the aim point regardless of painting
+        if (!reduceMotion && typeof requestAnimationFrame === 'function') {
+          var start = null;
+          var animate = function (now) {
+            if (start === null) start = now;
+            var k = Math.min(1, (now - start) / ms);
+            var e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+            placeBotCursor(x0 + (x1 - x0) * e, y0 + (y1 - y0) * e);
+            if (k < 1) {
+              requestAnimationFrame(animate);
+            }
+          };
+          requestAnimationFrame(animate);
+        }
+        return new Promise(function (resolve) {
+          setTimeout(resolve, reduceMotion ? 0 : ms);
+        });
+      }
+
+      // The pair line drawn on the phone: dashed, with the signed offset.
+      function renderPairLine() {
+        if (!S.pairLine) {
+          pairsSvg.innerHTML = '';
+          return;
+        }
+        var p = S.pairLine;
+        var label = '(' + signed(p.offX) + ', ' + signed(p.offY) + ')';
+        var midX = (p.agent.x + p.human.x) / 2;
+        var midY = (p.agent.y + p.human.y) / 2 - 10;
+        pairsSvg.innerHTML =
+          '<line x1="' + p.agent.x + '" y1="' + p.agent.y + '" x2="' + p.human.x +
+          '" y2="' + p.human.y + '" class="pair-line" />' +
+          '<circle cx="' + p.agent.x + '" cy="' + p.agent.y + '" r="7" class="pair-agent" />' +
+          '<circle cx="' + p.human.x + '" cy="' + p.human.y + '" r="7" class="pair-human" />' +
+          '<text x="' + midX + '" y="' + midY + '" class="pair-text" text-anchor="middle">' +
+          esc(label) + '</text>';
+      }
+
+      // ---- The feed -----------------------------------------------------
+      function feedAdd(kind, text) {
+        if (feedEl.children.length === 1 && feedEl.children[0].className === 'empty') {
+          feedEl.innerHTML = '';
+        }
+        var li = document.createElement('li');
+        li.className = 'feed-' + kind;
+        li.innerHTML = text;
+        feedEl.appendChild(li);
+        feedEl.scrollTop = feedEl.scrollHeight;
+        return li;
+      }
+
+      // ---- snapshot() ---------------------------------------------------
+      // The live detection results over the whole log, at the current window.
+      function snapshot() {
+        var humans = S.log.filter(function (a) { return a.actor === 'human'; })
+          .slice().sort(function (p, q) { return p.t - q.t; });
+        var mism = detectMismatches(S.log, S.windowMs);
+        var scale = detectScaleProblem(mism);
+        return { humans: humans, mism: mism, scale: scale };
+      }
+
+      // ---- The "what the agent is told" panels --------------------------
+      // The raw get_human_actions JSON: the human actions in server shape.
+      function actionJson(a) {
+        return {
+          timestamp: new Date(a.t).toISOString().replace(/(\.\d{3})\d*Z$/, '$1Z'),
+          actor: a.actor,
+          normalized_x: a.nx,
+          normalized_y: a.ny,
+          raw_x: a.rawX,
+          raw_y: a.rawY,
+          coordinate_space: 'device_points',
+          scale_factor: a.scale,
+          ui_element: a.role ? { role: a.role, label: a.label || null } : null,
+          kind: a.kind,
+          end_x: a.endX,
+          end_y: a.endY
+        };
+      }
+
+      function renderTold(snap) {
+        // Hook context: the header, then one "- " line per action, mismatch,
+        // and scale problem, exactly as poltergeist.activity would build it.
+        var header = 'Poltergeist: since your last simulator action, the human ' +
+          'also acted in the Simulator, so the screen may not be where you left it:';
+        var lines = [];
+        for (var i = 0; i < snap.humans.length; i++) {
+          var h = snap.humans[i];
+          lines.push(describeAction(h, h.role));
+        }
+        for (var j = 0; j < snap.mism.length; j++) {
+          lines.push(describeMismatch(snap.mism[j]));
+        }
+        if (snap.scale) {
+          lines.push(describeScale(snap.scale));
+        }
+        if (lines.length === 0) {
+          toldBody.textContent = 'No human actions yet.';
+        } else {
+          toldBody.textContent = header + '\n' +
+            lines.map(function (l) { return '- ' + l; }).join('\n');
+        }
+
+        // The raw tool result: one object with human_actions, mismatches and
+        // coordinate_scale_problem (null until there is one), as the Python
+        // server's get_human_actions returns it.
+        var result = {
+          human_actions: snap.humans.map(actionJson),
+          mismatches: snap.mism.map(mismatchJson),
+          coordinate_scale_problem: snap.scale ? scaleJson(snap.scale) : null
+        };
+        jsonEl.textContent = JSON.stringify(result, null, 2);
+      }
+
+      // A mismatch in the server's JSON shape.
+      function mismatchJson(m) {
+        return {
+          agent_click: actionJson(m.agent),
+          human_click: actionJson(m.human),
+          offset_x: m.offX,
+          offset_y: m.offY,
+          distance: m.distance
+        };
+      }
+
+      // A coordinate scale problem in the server's JSON shape.
+      function scaleJson(p) {
+        return {
+          sample_size: p.sampleSize,
+          scale_x: p.scaleX,
+          scale_y: p.scaleY,
+          spread_x: p.spreadX,
+          spread_y: p.spreadY
+        };
+      }
+
+      // ---- The scale verdict card ---------------------------------------
+      function renderVerdict(snap) {
+        var corrections = snap.mism.length;
+        if (snap.scale) {
+          var p = snap.scale;
+          verdictEl.innerHTML =
+            '<p class="verdict-head">Scale problem found.</p>' +
+            '<p>About <b>&times;' + fixed(p.scaleX, 2) + '</b> horizontally and <b>&times;' +
+            fixed(p.scaleY, 2) + '</b> vertically, from <b>' + p.sampleSize +
+            '</b> corrections.</p>' +
+            '<p class="muted">Spread ' + fixed(p.spreadX * 100, 1) + '% horizontally, ' +
+            fixed(p.spreadY * 100, 1) + '% vertically &mdash; within the 10% the rule allows.</p>';
+          return;
+        }
+        if (corrections >= MIN_SAMPLES) {
+          // Three or more corrections but the ratios disagree.
+          var xs = [], ys = [];
+          for (var i = 0; i < snap.mism.length; i++) {
+            var m = snap.mism[i];
+            if (Math.abs(m.human.nx) < NEAR_ZERO || Math.abs(m.human.ny) < NEAR_ZERO) continue;
+            xs.push(m.agent.nx / m.human.nx);
+            ys.push(m.agent.ny / m.human.ny);
+          }
+          if (xs.length >= MIN_SAMPLES) {
+            verdictEl.innerHTML =
+              '<p class="verdict-head">Corrections disagree.</p>' +
+              '<p class="muted">' + xs.length + ' corrections, but the ratios spread by ' +
+              fixed(relSpread(xs) * 100, 1) + '% horizontally and ' +
+              fixed(relSpread(ys) * 100, 1) + '% vertically &mdash; too much to call it a scale bug.</p>';
+            return;
+          }
+        }
+        var need = MIN_SAMPLES - corrections;
+        verdictEl.innerHTML = '<span class="empty">' +
+          (corrections === 0
+            ? 'No corrections yet &mdash; three are needed to measure the scale.'
+            : corrections + (corrections === 1 ? ' correction so far; ' : ' corrections so far; ') +
+              (need > 0 ? need + ' more needed.' : 'measuring\u2026')) +
+          '</span>';
+      }
+
+      // ---- The event log table ------------------------------------------
+      function renderLog(snap) {
+        // Map each human action to its pairing, if any.
+        var pairedHuman = {};
+        for (var i = 0; i < snap.mism.length; i++) {
+          pairedHuman[snap.mism[i].human.t] = snap.mism[i];
+        }
+        // Newest first.
+        var rows = S.events.slice().sort(function (p, q) { return q.t - p.t; });
+        var html = '';
+        for (var r = 0; r < rows.length; r++) {
+          var e = rows[r];
+          var point;
+          if (e.kind === 'drag') {
+            point = pt(e.nx, e.ny) + '\u2192' + pt(e.endX, e.endY);
+          } else {
+            point = pt(e.nx, e.ny);
+          }
+          var pairText = '\u2014';
+          if (e.actor === 'human' && pairedHuman[e.t]) {
+            var m = pairedHuman[e.t];
+            var secs = (m.human.t - m.agent.t) / 1000;
+            pairText = 'paired, ' + fixed(secs, 1) + 's';
+          } else if (e.actor === 'agent' && e.kind === 'click') {
+            pairText = 'agent tap';
+          }
+          var actorCls = e.actor === 'human' ? 'log-human' : 'log-agent';
+          html += '<tr><td>' + clock(e.t) + '</td><td class="' + actorCls + '">' + e.actor +
+            '</td><td>' + esc(e.label || e.kind) + '</td><td>' + esc(point) +
+            '</td><td>' + esc(pairText) + '</td></tr>';
+        }
+        logBody.innerHTML = html;
+      }
+
+      // ---- The timeline -------------------------------------------------
+      function renderTimeline(snap) {
+        var W = 600, H = 120;
+        var agentY = 34, humanY = 86;
+        // Time span: from the first event to now (or the open window's end).
+        var times = S.events.map(function (e) { return e.t; });
+        var now = Date.now();
+        var end = now;
+        if (S.countdownUntil > now) end = S.countdownUntil;
+        var min = times.length ? Math.min.apply(null, times) : now;
+        var max = times.length ? Math.max(Math.max.apply(null, times), end) : now;
+        var span = Math.max(1, max - min);
+        var pad = 24;
+        function sx(t) { return pad + (t - min) / span * (W - 2 * pad); }
+
+        var svg = '';
+        // Lanes.
+        svg += '<line x1="' + pad + '" y1="' + agentY + '" x2="' + (W - pad) +
+          '" y2="' + agentY + '" class="tl-lane" />';
+        svg += '<line x1="' + pad + '" y1="' + humanY + '" x2="' + (W - pad) +
+          '" y2="' + humanY + '" class="tl-lane" />';
+        svg += '<text x="4" y="' + (agentY + 4) + '" class="tl-label">agent</text>';
+        svg += '<text x="4" y="' + (humanY + 4) + '" class="tl-label">human</text>';
+
+        // A window bar for each agent click.
+        for (var i = 0; i < S.events.length; i++) {
+          var e = S.events[i];
+          if (e.actor === 'agent' && e.kind === 'click') {
+            var x0 = sx(e.t);
+            var x1 = sx(Math.min(max, e.t + S.windowMs));
+            svg += '<rect x="' + x0 + '" y="' + (agentY + 6) + '" width="' +
+              Math.max(1, x1 - x0) + '" height="10" class="tl-window" />';
+          }
+        }
+        // Lines between paired actions.
+        for (var j = 0; j < snap.mism.length; j++) {
+          var m = snap.mism[j];
+          svg += '<line x1="' + sx(m.agent.t) + '" y1="' + agentY + '" x2="' +
+            sx(m.human.t) + '" y2="' + humanY + '" class="tl-pair" />';
+        }
+        // Dots for each action.
+        for (var k = 0; k < S.events.length; k++) {
+          var ev = S.events[k];
+          var y = ev.actor === 'agent' ? agentY : humanY;
+          var cls = ev.actor === 'agent' ? 'tl-agent' : 'tl-human';
+          svg += '<circle cx="' + sx(ev.t) + '" cy="' + y + '" r="4" class="' + cls + '" />';
+        }
+        // A moving marker while a window is open.
+        if (S.countdownUntil > now) {
+          svg += '<line x1="' + sx(now) + '" y1="18" x2="' + sx(now) +
+            '" y2="' + (H - 12) + '" class="tl-now" />';
+        }
+        tlEl.innerHTML = svg;
+      }
+
+      // ---- Render every panel from a snapshot ---------------------------
+      function renderPanels() {
+        var snap = snapshot();
+        renderTold(snap);
+        renderVerdict(snap);
+        renderLog(snap);
+        renderTimeline(snap);
+        renderPairLine();
+        return snap;
+      }
+
+      // ---- Recording an action ------------------------------------------
+      // Adds to the log and the events, re-renders the panels. Returns the
+      // makeAction record.
+      function record(actor, kind, x, y, endX, endY, label, role) {
+        var t = Date.now();
+        var a = makeAction(actor, kind, x, y, endX, endY, 1, t);
+        a.role = role || null;
+        a.label = label || null;
+        S.log.push(a);
+        S.events.push({
+          t: t, actor: actor, kind: kind,
+          nx: a.nx, ny: a.ny, endX: a.endX, endY: a.endY,
+          label: label || null, role: role || null
+        });
+        return a;
+      }
+
+      // ---- The status line ----------------------------------------------
+      function setStatus(text) {
+        windowEl.textContent = text;
+      }
+      function winLabel() { return (S.windowMs / 1000) + 's'; }
+
+      // ---- Gestures on the phone (Requirement 6.3, 6.4) -----------------
+      var press = null;
+      function onPointerDown(ev) {
+        if (S.busy) return; // the agent is mid-step
+        var p = toDevice(ev.clientX, ev.clientY);
+        press = { x: p.x, y: p.y };
+        if (screenEl.setPointerCapture && ev.pointerId !== undefined) {
+          try { screenEl.setPointerCapture(ev.pointerId); } catch (e) {}
+        }
+      }
+      function onPointerUp(ev) {
+        if (!press) return;
+        var p = toDevice(ev.clientX, ev.clientY);
+        var start = press;
+        press = null;
+        var dx = p.x - start.x;
+        var dy = p.y - start.y;
+        var moved = Math.hypot(dx, dy);
+        if (moved > 8) {
+          humanGesture(start.x, start.y, p.x, p.y);
+        } else {
+          humanGesture(start.x, start.y, start.x, start.y);
+        }
+      }
+
+      // humanGesture applies a click or a drag of more than 8 points to the
+      // app, records it, and shows a watcher line at once. The test hook and
+      // the automatic demo both go through here.
+      function humanGesture(x0, y0, x1, y1) {
+        var dx = x1 - x0;
+        var dy = y1 - y0;
+        var isDrag = Math.hypot(dx, dy) > 8;
+
+        var a;
+        if (isDrag) {
+          // A drag: try a swipe on the app, record from start to end.
+          var sw = swipeApp(S.app, x0, y0, x1, y1);
+          S.app = sw.app;
+          var startHit = hitTest(S.app, x0, y0);
+          a = record('human', 'drag', x0, y0, x1, y1,
+            startHit ? startHit.label : null, startHit ? startHit.role : null);
+        } else {
+          // A click: tap the app at the point.
+          var tap = tapApp(S.app, x0, y0);
+          var hitEl = tap.hit;
+          if (!tap.off) {
+            S.app = tap.app;
+          }
+          a = record('human', 'click', x0, y0, null, null,
+            hitEl ? hitEl.label : null, hitEl ? hitEl.role : null);
+        }
+
+        renderApp();
+        // A fresh human action clears a drawn pair line only when the agent
+        // moves again; here we leave the current pair line as is.
+        var snap = renderPanels();
+
+        // The live watcher line in the feed.
+        feedAdd('watcher', '<b>watcher</b> ' + esc(describeAction(a, a.role)));
+        announceNewPairs(snap);
+        return a;
+      }
+
+      // After a human action, say in the feed whether Poltergeist paired it.
+      function announceNewPairs(snap) {
+        // Only the most recent human action is of interest here.
+        var humans = snap.humans;
+        if (!humans.length) return;
+        var last = humans[humans.length - 1];
+        var paired = null;
+        for (var i = 0; i < snap.mism.length; i++) {
+          if (snap.mism[i].human.t === last.t) { paired = snap.mism[i]; break; }
+        }
+        if (paired) {
+          var secs = (paired.human.t - paired.agent.t) / 1000;
+          feedAdd('watcher', 'Poltergeist paired that correction, ' +
+            fixed(secs, 1) + 's after the agent\u2019s tap.');
+          // The correction answered the miss: remove the intended-control hint.
+          S.want = null;
+          renderWant();
+          // Draw the pair line on the phone.
+          S.pairLine = {
+            agent: { x: paired.agent.nx, y: paired.agent.ny },
+            human: { x: paired.human.nx, y: paired.human.ny },
+            offX: paired.offX, offY: paired.offY
+          };
+          renderPairLine();
+        } else {
+          // Was there an open window it could have paired with but missed?
+          feedAdd('watcher', 'That click was not paired with an agent tap.');
+        }
+      }
+
+      // ---- The scripted agent step (Requirement 5) ----------------------
+      // One step: hear, look, decide with the policy, aim 1.5x too big (or
+      // divided by the measured factors once corrected), glide, wait, tap,
+      // look again. autoPace shortens the carry wait during the demo.
+      function agentStep(opts) {
+        opts = opts || {};
+        if (S.busy) return Promise.resolve();
+        if (taskDone(S.app)) {
+          feedAdd('done', '<b>done</b> the beach photo is already sent to Maya.');
+          return Promise.resolve();
+        }
+        S.busy = true;
+        updateButtons();
+
+        var carryWait = opts.auto ? 450 : 1500;
+        var glideMs = reduceMotion ? 1 : 1200;
+
+        return (function () {
+          // Hear: what Poltergeist would add since the last step.
+          var heard = hearStep();
+
+          // Realise, in this same step and before deciding where to tap: if
+          // Poltergeist reports a scale problem the agent has not adopted yet,
+          // the agent divides its coordinates by the measured factors now, so
+          // the tap it is about to make already lands (Requirement 5.5).
+          maybeSelfCorrect(heard);
+
+          // Look.
+          feedAdd('thinking', '<b>look</b> the agent sees ' + esc(describeScreen(S.app)) + '.');
+
+          // Decide.
+          var choice = policy(S.app);
+          if (!choice) {
+            feedAdd('done', '<b>done</b> nothing left to do.');
+            S.busy = false;
+            updateButtons();
+            return Promise.resolve();
+          }
+
+          // Where it will tap: the control centre, read 1.5x too big, divided
+          // by the measured factors once the agent has corrected itself.
+          var el = elementsFor(S.app).find(function (e) { return e.id === choice.id; });
+          var cx = el.x + el.w / 2;
+          var cy = el.y + el.h / 2;
+          var aimX = cx * BUG / S.factorX;
+          var aimY = cy * BUG / S.factorY;
+
+          feedAdd('thinking', '<b>decide</b> ' + esc(choice.why) + '; it will tap ' +
+            esc(choice.label) + '.');
+
+          // The intended control's outline and pulsing dot are not shown yet:
+          // Requirement 5.3 shows them only after a tap that missed.
+
+          // Clear the previous pair line now that the agent moves again.
+          S.pairLine = null;
+          renderPairLine();
+
+          // Glide the cursor there, then wait for a possible carry.
+          var from = { x: aimX, y: aimY };
+          return glideBot(aimX, aimY, aimX, aimY, glideMs).then(function () {
+            placeBotCursor(aimX, aimY);
+            return sleep(carryWait);
+          }).then(function () {
+            // Tap for real.
+            var tap = tapApp(S.app, aimX, aimY);
+            var landed = tap.hit;
+            if (!tap.off) S.app = tap.app;
+            var rec = record('agent', 'click', aimX, aimY, null, null,
+              landed ? landed.label : null, landed ? landed.role : null);
+
+            renderApp();
+            feedAdd('action', '<b>action</b> tapped ' + pt(aimX, aimY) +
+              ' (aiming at ' + esc(choice.label) + ').');
+
+            // Look again.
+            var didWork = worked(S.app, choice.id);
+            if (didWork) {
+              S.want = null;
+              renderWant();
+              feedAdd('result', '<b>result</b> it worked \u2014 now ' +
+                esc(describeScreen(S.app)) + '.');
+            } else {
+              // A miss: now show the control it meant (dashed outline and a
+              // pulsing dot at its centre) and start the correction window.
+              S.want = el;
+              renderWant();
+              var hitName = landed ? landed.label : 'empty space';
+              feedAdd('result', '<b>result</b> it meant <b>' + esc(choice.label) +
+                '</b> but hit ' + esc(hitName) + '. ' + esc(describeScreen(S.app)) + '.');
+              startCountdown();
+            }
+
+            S.stepCount += 1;
+            var snap = renderPanels();
+
+            S.busy = false;
+            updateButtons();
+
+            // After a step that worked while corrected, the next follows alone.
+            if (S.corrected && didWork && !taskDone(S.app) && policy(S.app)) {
+              var nextDelay = opts.auto ? 1000 : 1700;
+              setTimeout(function () { agentStep(opts); }, nextDelay);
+            } else if (taskDone(S.app)) {
+              feedAdd('done', '<b>done</b> the beach photo is on its way to Maya. ' +
+                'The agent finished on its own.');
+              setStatus('Task complete. Window: ' + winLabel() + '.');
+            }
+            return snap;
+          });
+        })();
+      }
+
+      // Hear: describe the human's new actions, new mismatches and a not yet
+      // adopted scale problem since the agent's last step.
+      function hearStep() {
+        var snap = snapshot();
+        var newOnes = S.log.filter(function (a) {
+          return a.actor === 'human' && a.t > (S.heardUntil || 0);
+        });
+        if (newOnes.length) {
+          feedAdd('hook', '<b>hook</b> Poltergeist: since your last action, the human ' +
+            'acted on the screen:');
+          for (var i = 0; i < newOnes.length; i++) {
+            feedAdd('hook', '&nbsp;&bull; ' + esc(describeAction(newOnes[i], newOnes[i].role)));
+          }
+          for (var j = 0; j < snap.mism.length; j++) {
+            var m = snap.mism[j];
+            if (m.human.t > (S.heardUntil || 0)) {
+              feedAdd('hook', '&nbsp;&bull; ' + esc(describeMismatch(m)));
+            }
+          }
+          if (snap.scale && !S.corrected) {
+            feedAdd('hook', '&nbsp;&bull; ' + esc(describeScale(snap.scale)));
+          }
+        }
+        S.heardUntil = Date.now();
+        return snap;
+      }
+
+      // maybeSelfCorrect: once a scale problem is found and not yet adopted,
+      // the agent divides by the measured factors and says so.
+      function maybeSelfCorrect(snap) {
+        if (S.corrected) return;
+        if (snap.scale) {
+          S.corrected = true;
+          S.factorX = snap.scale.scaleX;
+          S.factorY = snap.scale.scaleY;
+          feedAdd('thinking', '<b>realise</b> my coordinates are about \u00d7' +
+            fixed(snap.scale.scaleX, 2) + ' too big horizontally and \u00d7' +
+            fixed(snap.scale.scaleY, 2) + ' too big vertically. Dividing them out and ' +
+            'finishing on my own.');
+          setStatus('Scale corrected. The agent finishes on its own. Window: ' + winLabel() + '.');
+        }
+      }
+
+      // ---- The correction-window countdown ------------------------------
+      var countdownTimer = null;
+      function startCountdown() {
+        S.countdownUntil = Date.now() + S.windowMs;
+        if (countdownTimer) clearInterval(countdownTimer);
+        tickCountdown();
+        countdownTimer = setInterval(tickCountdown, 100);
+      }
+      function tickCountdown() {
+        var left = S.countdownUntil - Date.now();
+        if (left <= 0) {
+          left = 0;
+          clearInterval(countdownTimer);
+          countdownTimer = null;
+          S.countdownUntil = 0;
+          // The window closed with no correction: remove the intended-control hint.
+          S.want = null;
+          renderWant();
+          setStatus('Window closed. Press \u201CAgent step\u201D or correct the next miss. Window: ' +
+            winLabel() + '.');
+        } else {
+          setStatus('Correct it! ' + fixed(left / 1000, 1) + 's left in the ' +
+            winLabel() + ' window.');
+        }
+        // Keep the timeline marker moving.
+        renderTimeline(snapshot());
+      }
+
+      // ---- Buttons ------------------------------------------------------
+      function updateButtons() {
+        var disabled = S.busy;
+        agentBtn.disabled = disabled;
+        autoBtn.disabled = disabled;
+        if (taskDone(S.app)) {
+          agentBtn.textContent = 'Replay';
+        } else if (S.stepCount === 0) {
+          agentBtn.textContent = 'Agent step';
+        } else {
+          agentBtn.textContent = 'Next step';
+        }
+      }
+
+      // The automatic demo: reset, then run steps; after each miss a ghost
+      // glides to the dot of the intended control and clicks it, and the next
+      // step follows after about a second.
+      function runAuto() {
+        if (S.auto) return;
+        reset();
+        S.auto = true;
+        updateButtons();
+        var guard = 0;
+        function loop() {
+          if (!S.auto) return;
+          if (taskDone(S.app) || !policy(S.app)) {
+            S.auto = false;
+            updateButtons();
+            return;
+          }
+          if (guard++ > 20) { S.auto = false; updateButtons(); return; }
+          agentStep({ auto: true }).then(function () {
+            if (!S.auto) return;
+            if (taskDone(S.app)) { S.auto = false; updateButtons(); return; }
+            if (S.corrected) {
+              // The agent carries on by itself; just wait and check.
+              setTimeout(loop, 1200);
+              return;
+            }
+            if (S.want) {
+              // A miss: the ghost corrects on the intended control's dot.
+              var el = S.want;
+              var gx = el.x + el.w / 2;
+              var gy = el.y + el.h / 2;
+              setTimeout(function () {
+                if (!S.auto) return;
+                humanGesture(gx + 3, gy - 2, gx + 3, gy - 2);
+                setTimeout(loop, 1000);
+              }, 700);
+            } else {
+              setTimeout(loop, 1000);
+            }
+          });
+        }
+        loop();
+      }
+
+      // ---- Reset --------------------------------------------------------
+      function reset() {
+        if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+        S = freshState();
+        S.heardUntil = 0;
+        S.auto = false;
+        // Reflect the currently chosen window.
+        var pressed = document.querySelector('[data-win][aria-pressed="true"]');
+        if (pressed) S.windowMs = parseInt(pressed.getAttribute('data-win'), 10);
+        showBotCursor(false);
+        wantLayer.innerHTML = '';
+        pairsSvg.innerHTML = '';
+        renderApp();
+        feedEl.innerHTML = '';
+        feedAdd('task', '<b>task</b> send Maya Chen the beach photo. ' +
+          'The agent reads coordinates about 1.5&times; too big, so its taps miss.');
+        renderPanels();
+        setStatus('Window: ' + winLabel() + '. Press \u201CAgent step\u201D to begin.');
+        updateButtons();
+      }
+
+      // ---- setWindow ----------------------------------------------------
+      function setWindow(ms) {
+        S.windowMs = ms;
+        winButtons.forEach(function (b) {
+          b.setAttribute('aria-pressed',
+            parseInt(b.getAttribute('data-win'), 10) === ms ? 'true' : 'false');
+        });
+        if (!S.countdownUntil) {
+          setStatus('Window: ' + winLabel() + '. Press \u201CAgent step\u201D to begin.');
+        }
+        renderPanels();
+      }
+
+      // ---- Wire it up ---------------------------------------------------
+      S = freshState();
+      reset();
+
+      if (screenEl && window.PointerEvent) {
+        screenEl.addEventListener('pointerdown', onPointerDown);
+        screenEl.addEventListener('pointerup', onPointerUp);
+      } else if (screenEl) {
+        screenEl.addEventListener('mousedown', onPointerDown);
+        screenEl.addEventListener('mouseup', onPointerUp);
+      }
+
+      if (agentBtn) agentBtn.addEventListener('click', function () {
+        if (taskDone(S.app)) { reset(); return; }
+        agentStep();
+      });
+      if (autoBtn) autoBtn.addEventListener('click', function () { runAuto(); });
+      if (resetBtn) resetBtn.addEventListener('click', function () { reset(); });
+
+      winButtons.forEach(function (b) {
+        b.addEventListener('click', function () {
+          setWindow(parseInt(b.getAttribute('data-win'), 10));
+        });
+      });
 
       // Theme: follow the system by default; the button forces light/dark.
       var themeBtn = document.getElementById('themeBtn');
@@ -1616,7 +2527,6 @@
           } else if (current === 'light') {
             dark = true;
           } else {
-            // No explicit choice yet: flip away from the system theme.
             dark = !prefersDark;
           }
           root.setAttribute('data-theme', dark ? 'dark' : 'light');
@@ -1633,6 +2543,16 @@
           repoLink.hidden = true;
         }
       }
+
+      // The test hook (Requirement 10).
+      window.__poltergeistDemo = {
+        agentStep: function () { return agentStep(); },
+        humanGesture: function (x0, y0, x1, y1) { return humanGesture(x0, y0, x1, y1); },
+        reset: function () { return reset(); },
+        snapshot: function () { return snapshot(); },
+        state: function () { return S; },
+        setWindow: function (ms) { return setWindow(ms); }
+      };
     }
 
     // Expose for tooling in later stages; harmless here.
