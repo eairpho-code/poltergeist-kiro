@@ -217,15 +217,15 @@ This implementation builds an MCP server that records click actions from AI agen
     - Verify normalized positions are identical
     - _Requirements: 1.1, 1.4_
 
-- [ ] 10. Implement MCP server with tools
-  - [ ] 10.1 Create MCP server initialization
+- [x] 10. Implement MCP server with tools
+  - [x] 10.1 Create MCP server initialization
     - Use verified SDK import paths from Phase 0
     - Initialize MCPServer("poltergeist-human-action-log")
     - Create global ActionLog instance
     - Configure redaction from environment variable POLTERGEIST_REDACT_UI_LABELS
     - _Requirements: 2.1, 4.3_
   
-  - [ ] 10.2 Implement record_agent_click MCP tool
+  - [x] 10.2 Implement record_agent_click MCP tool
     - Define tool with @mcp.tool() decorator
     - Accept x, y, coordinate_space, scale_factor, optional ui_element_role, ui_element_label
     - Validate coordinate_space enum
@@ -234,7 +234,7 @@ This implementation builds an MCP server that records click actions from AI agen
     - Return success response with timestamp
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
   
-  - [ ] 10.3 Implement get_human_actions MCP tool
+  - [x] 10.3 Implement get_human_actions MCP tool
     - Define tool with @mcp.tool() decorator
     - Accept optional since_timestamp parameter
     - Validate timestamp format if provided
@@ -243,7 +243,7 @@ This implementation builds an MCP server that records click actions from AI agen
     - Return human_actions, mismatches, coordinate_scale_problem
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 6.5, 7.6_
   
-  - [ ] 10.4 Implement clear_action_log MCP tool
+  - [x] 10.4 Implement clear_action_log MCP tool
     - Define tool with @mcp.tool() decorator
     - Accept optional before_timestamp parameter
     - Validate timestamp format if provided
@@ -251,7 +251,7 @@ This implementation builds an MCP server that records click actions from AI agen
     - Return removed_count
     - _Requirements: 9.1, 9.2, 9.3, 9.4_
   
-  - [ ]* 10.5 Write integration tests for MCP tools
+  - [x]* 10.5 Write integration tests for MCP tools
     - Test record_agent_click over stdio transport
     - Test get_human_actions over stdio transport
     - Test clear_action_log over stdio transport
@@ -261,8 +261,8 @@ This implementation builds an MCP server that records click actions from AI agen
     - Test zero scale_factor returns error
     - _Requirements: 2.1, 2.2, 5.1, 5.2, 9.1, 9.2_
 
-- [ ] 11. Implement HTTP endpoint for human clicks
-  - [ ] 11.1 Add HTTP POST /human-click endpoint
+- [x] 11. Implement HTTP endpoint for human clicks
+  - [x] 11.1 Add HTTP POST /human-click endpoint
     - Configure HTTP server to bind to 127.0.0.1 (localhost only)
     - Accept JSON payload with x, y, coordinate_space, scale_factor, optional ui_element
     - Validate required fields and types
@@ -272,7 +272,7 @@ This implementation builds an MCP server that records click actions from AI agen
     - Return JSON response with status="recorded", actor="human", timestamp
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
   
-  - [ ]* 11.2 Write integration tests for HTTP endpoint
+  - [x]* 11.2 Write integration tests for HTTP endpoint
     - Test POST valid payload records human action
     - Test response includes timestamp and actor="human"
     - Test invalid JSON returns 400 Bad Request
@@ -280,7 +280,7 @@ This implementation builds an MCP server that records click actions from AI agen
     - Test endpoint binds to 127.0.0.1 only
     - _Requirements: 3.1, 3.2, 3.3_
 
-- [ ] 12. Checkpoint - Server implementation complete
+- [x] 12. Checkpoint - Server implementation complete
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 13. Add error handling and logging
