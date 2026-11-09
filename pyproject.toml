@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "poltergeist-human-action-log"
+version = "0.1.0"
+description = "MCP server that tells an AI agent which clicks a human made for it"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+dependencies = [
+    "mcp>=2.3,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "hypothesis",
+]
+
+[project.scripts]
+poltergeist-server = "poltergeist.server:main"
+
+[tool.setuptools.packages.find]
+include = ["poltergeist*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
