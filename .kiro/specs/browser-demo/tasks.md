@@ -12,10 +12,10 @@ One file, `demo/index.html`, built in five stages. Stages 1 and 2 are checked by
     - _Requirements: 1.1, 1.2, 1.3, 1.4_
   - [x]* 1.2 Check: `python demo/check_port.py` (provided)
 
-- [ ] 2. The app
-  - [ ] 2.1 Add the app between the `// <app>` markers: state, elements, hit testing, taps, swipes, policy, `worked`, `screenHtml`
+- [x] 2. The app
+  - [x] 2.1 Add the app between the `// <app>` markers: state, elements, hit testing, taps, swipes, policy, `worked`, `screenHtml`
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
-  - [ ]* 2.2 Check: `python demo/check_app.py` (provided)
+  - [x]* 2.2 Check: `python demo/check_app.py` (provided)
 
 - [ ] 3. The page structure and the first screen
   - [ ] 3.1 Write the document, the tokens for both themes, the fonts and the layout of the top bar, headline and stage

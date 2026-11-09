@@ -395,6 +395,454 @@
     }
     // </core>
 
+    // <app>
+    // The phone's Messages app: pure functions on a state object, in device
+    // points, origin top left, width SW = 430, height SH = 932.
+    var SW = 430;
+    var SH = 932;
+
+    // The six photos, in order, two per row, even index at x 16.
+    var PHOTOS = [
+      { id: 'beach', name: 'Beach' },
+      { id: 'forest', name: 'Forest' },
+      { id: 'city', name: 'City' },
+      { id: 'sunset', name: 'Sunset' },
+      { id: 'dog', name: 'Dog' },
+      { id: 'coffee', name: 'Coffee' }
+    ];
+
+    function photoName(id) {
+      for (var i = 0; i < PHOTOS.length; i++) {
+        if (PHOTOS[i].id === id) {
+          return PHOTOS[i].name;
+        }
+      }
+      return null;
+    }
+
+    // The chats, in display order, with their two messages.
+    var CHATS = [
+      { id: 'chat-maya', name: 'Maya Chen', y: 118,
+        messages: ['Did you get any beach photos?', 'Send me the best one!'] },
+      { id: 'chat-dev', name: 'Dev Team', y: 272,
+        messages: ['Build is green', 'Ship it?'] },
+      { id: 'chat-mom', name: 'Mom', y: 354,
+        messages: ['Call me when you land', 'Love you'] },
+      { id: 'chat-delivery', name: 'Delivery', y: 436,
+        messages: ['Your parcel is nearby', 'Arriving in 10 minutes'] }
+    ];
+
+    function chatById(id) {
+      for (var i = 0; i < CHATS.length; i++) {
+        if (CHATS[i].id === id) {
+          return CHATS[i];
+        }
+      }
+      return null;
+    }
+
+    function chatByName(name) {
+      for (var i = 0; i < CHATS.length; i++) {
+        if (CHATS[i].name === name) {
+          return CHATS[i];
+        }
+      }
+      return null;
+    }
+
+    // initialApp returns the starting state, on the chat list.
+    function initialApp() {
+      return {
+        screen: 'chats',
+        chat: null,
+        attached: null,
+        selected: null,
+        sent: null,
+        alert: false,
+        toast: '',
+        toggles: { notif: true, receipts: false, airplane: false }
+      };
+    }
+
+    function copyToggles(toggles) {
+      return { notif: toggles.notif, receipts: toggles.receipts, airplane: toggles.airplane };
+    }
+
+    // cloneApp copies the state, clears toast, copies toggles.
+    function cloneApp(app) {
+      return {
+        screen: app.screen,
+        chat: app.chat,
+        attached: app.attached,
+        selected: app.selected,
+        sent: app.sent ? { chat: app.sent.chat, photo: app.sent.photo } : null,
+        alert: app.alert,
+        toast: '',
+        toggles: copyToggles(app.toggles)
+      };
+    }
+
+    // elementsFor returns the elements of the current screen in drawing order.
+    // Later elements draw on top. { id, x, y, w, h, cls, html, st?, hit?, role?, label? }.
+    function elementsFor(app) {
+      var els = [];
+
+      if (app.screen === 'chats') {
+        els.push({ id: 'title', x: 22, y: 48, w: 300, h: 46, cls: 'title', html: 'Messages' });
+        els.push({ id: 'hdr-pinned', x: 22, y: 96, w: 200, h: 20, cls: 'hdr', html: 'Pinned' });
+        els.push({ id: 'chat-maya', x: 16, y: 118, w: 398, h: 76, cls: 'row', html: 'Maya Chen',
+          hit: true, role: 'row', label: 'Maya Chen' });
+        els.push({ id: 'hdr-earlier', x: 0, y: 200, w: 430, h: 66, cls: 'hdr', html: 'Earlier',
+          hit: true, role: 'header', label: 'the \u201CEarlier\u201D header' });
+        els.push({ id: 'chat-dev', x: 16, y: 272, w: 398, h: 76, cls: 'row', html: 'Dev Team',
+          hit: true, role: 'row', label: 'Dev Team' });
+        els.push({ id: 'chat-mom', x: 16, y: 354, w: 398, h: 76, cls: 'row', html: 'Mom',
+          hit: true, role: 'row', label: 'Mom' });
+        els.push({ id: 'chat-delivery', x: 16, y: 436, w: 398, h: 76, cls: 'row', html: 'Delivery',
+          hit: true, role: 'row', label: 'Delivery' });
+        pushTabbar(els, app);
+      } else if (app.screen === 'settings') {
+        els.push({ id: 'title', x: 22, y: 48, w: 300, h: 46, cls: 'title', html: 'Settings' });
+        els.push({ id: 'set-notif', x: 16, y: 118, w: 398, h: 56, cls: 'switch', html: 'Notifications',
+          hit: true, role: 'switch', label: 'the Notifications switch', st: 'notif' });
+        els.push({ id: 'set-receipts', x: 16, y: 182, w: 398, h: 56, cls: 'switch', html: 'Read receipts',
+          hit: true, role: 'switch', label: 'the Read receipts switch', st: 'receipts' });
+        els.push({ id: 'set-airplane', x: 16, y: 246, w: 398, h: 56, cls: 'switch', html: 'Airplane mode',
+          hit: true, role: 'switch', label: 'the Airplane mode switch', st: 'airplane' });
+        els.push({ id: 'set-delete', x: 16, y: 326, w: 398, h: 56, cls: 'button', html: 'Delete all conversations',
+          hit: true, role: 'button', label: '\u201CDelete all conversations\u201D' });
+        pushTabbar(els, app);
+      } else if (app.screen === 'thread') {
+        var chat = chatByName(app.chat);
+        els.push({ id: 'back', x: 8, y: 52, w: 120, h: 40, cls: 'button', html: '\u2039 Messages',
+          hit: true, role: 'button', label: 'Back' });
+        els.push({ id: 'navtitle', x: 130, y: 52, w: 170, h: 40, cls: 'navtitle', html: app.chat || '' });
+        if (app.attached) {
+          els.push({ id: 'sendbtn', x: 322, y: 52, w: 92, h: 40, cls: 'button', html: 'Send',
+            hit: true, role: 'button', label: 'Send' });
+          els.push({ id: 'attached', x: 16, y: 112, w: 398, h: 58, cls: 'attachment',
+            html: photoName(app.attached) || '', hit: true, role: 'attachment', label: 'the attached photo' });
+        } else {
+          els.push({ id: 'share', x: 16, y: 112, w: 398, h: 58, cls: 'button', html: 'Share a photo',
+            hit: true, role: 'button', label: 'Share a photo' });
+        }
+        var m0 = chat ? chat.messages[0] : '';
+        var m1 = chat ? chat.messages[1] : '';
+        els.push({ id: 'bubble-1', x: 16, y: 186, w: 288, h: 44, cls: 'bubble', html: m0,
+          hit: true, role: 'message', label: 'a message' });
+        els.push({ id: 'bubble-2', x: 16, y: 238, w: 236, h: 44, cls: 'bubble', html: m1,
+          hit: true, role: 'message', label: 'a message' });
+        if (app.sent && app.sent.chat === app.chat) {
+          els.push({ id: 'sent-photo', x: 214, y: 296, w: 200, h: 140, cls: 'photo',
+            html: photoName(app.sent.photo) || '', hit: true, role: 'photo', label: 'the sent photo' });
+          els.push({ id: 'delivered', x: 300, y: 442, w: 114, h: 20, cls: 'delivered', html: 'Delivered' });
+        }
+      } else if (app.screen === 'photos') {
+        els.push({ id: 'cancel', x: 8, y: 52, w: 90, h: 40, cls: 'button', html: 'Cancel',
+          hit: true, role: 'button', label: 'Cancel' });
+        els.push({ id: 'navtitle', x: 110, y: 52, w: 210, h: 40, cls: 'navtitle', html: 'Choose photo' });
+        els.push({ id: 'done', x: 322, y: 52, w: 92, h: 40, cls: 'button', html: 'Done',
+          hit: true, role: 'button', label: 'Done' });
+        for (var i = 0; i < PHOTOS.length; i++) {
+          var row = Math.floor(i / 2);
+          var px = (i % 2 === 0) ? 16 : 215;
+          var py = 118 + 148 * row;
+          els.push({ id: 'tile-' + PHOTOS[i].id, x: px, y: py, w: 199, h: 140, cls: 'photo',
+            html: PHOTOS[i].name, hit: true, role: 'photo', label: 'the ' + PHOTOS[i].name + ' photo' });
+        }
+      }
+
+      // The delete-confirmation dialog sits above everything.
+      if (app.alert) {
+        els.push({ id: 'scrim', x: 0, y: 0, w: 430, h: 932, cls: 'scrim',
+          html: '', hit: true, role: 'dialog', label: 'the dialog backdrop' });
+        els.push({ id: 'alertbox', x: 60, y: 360, w: 310, h: 170, cls: 'alertbox',
+          html: 'Delete all conversations?' });
+        els.push({ id: 'alert-cancel', x: 60, y: 470, w: 155, h: 60, cls: 'button', html: 'Cancel',
+          hit: true, role: 'button', label: 'Cancel' });
+        els.push({ id: 'alert-delete', x: 215, y: 470, w: 155, h: 60, cls: 'button', html: 'Delete',
+          hit: true, role: 'button', label: 'Delete' });
+      }
+
+      // The toast sits on top of everything when set.
+      if (app.toast) {
+        els.push({ id: 'toast', x: 75, y: 796, w: 280, h: 44, cls: 'toast', html: app.toast });
+      }
+
+      return els;
+    }
+
+    function pushTabbar(els, app) {
+      els.push({ id: 'tabbar', x: 0, y: 846, w: 430, h: 86, cls: 'tabbar', html: '' });
+      els.push({ id: 'tab-chats', x: 0, y: 850, w: 215, h: 70, cls: 'tab', html: 'Messages',
+        hit: true, role: 'tab', label: 'the Messages tab' });
+      els.push({ id: 'tab-settings', x: 215, y: 850, w: 215, h: 70, cls: 'tab', html: 'Settings',
+        hit: true, role: 'tab', label: 'the Settings tab' });
+    }
+
+    // hitTest returns the top-most hit element whose rectangle contains the
+    // point (edges included), or null.
+    function hitTest(app, x, y) {
+      var els = elementsFor(app);
+      for (var i = els.length - 1; i >= 0; i--) {
+        var e = els[i];
+        if (!e.hit) {
+          continue;
+        }
+        if (x >= e.x && x <= e.x + e.w && y >= e.y && y <= e.y + e.h) {
+          return e;
+        }
+      }
+      return null;
+    }
+
+    // perform returns the next state for a tap on element id. Always a new
+    // object, toast cleared and toggles copied, then changes applied.
+    function perform(app, id) {
+      var next = cloneApp(app);
+
+      // While the dialog is open only its buttons act.
+      if (app.alert) {
+        if (id === 'alert-cancel') {
+          next.alert = false;
+        } else if (id === 'alert-delete') {
+          next.alert = false;
+          next.toast = 'Demo only: nothing was deleted';
+        }
+        return next;
+      }
+
+      if (id === 'chat-maya' || id === 'chat-dev' || id === 'chat-mom' || id === 'chat-delivery') {
+        var chat = chatById(id);
+        next.screen = 'thread';
+        next.chat = chat ? chat.name : null;
+        next.attached = null;
+        next.selected = null;
+        return next;
+      }
+
+      if (id === 'back' || id === 'tab-chats') {
+        next.screen = 'chats';
+        next.chat = null;
+        next.attached = null;
+        next.selected = null;
+        return next;
+      }
+
+      if (id === 'tab-settings') {
+        next.screen = 'settings';
+        return next;
+      }
+
+      if (id === 'share') {
+        next.screen = 'photos';
+        next.selected = app.attached;
+        return next;
+      }
+
+      if (id === 'cancel') {
+        next.screen = 'thread';
+        return next;
+      }
+
+      if (id && id.indexOf('tile-') === 0) {
+        next.selected = id.slice('tile-'.length);
+        return next;
+      }
+
+      if (id === 'done') {
+        if (app.selected) {
+          next.attached = app.selected;
+          next.screen = 'thread';
+        }
+        return next;
+      }
+
+      if (id === 'sendbtn') {
+        if (app.attached) {
+          next.sent = { chat: app.chat, photo: app.attached };
+          next.attached = null;
+          next.toast = 'Sent to ' + app.chat;
+        }
+        return next;
+      }
+
+      if (id === 'set-notif' || id === 'set-receipts' || id === 'set-airplane') {
+        var key = id.slice('set-'.length);
+        next.toggles[key] = !app.toggles[key];
+        return next;
+      }
+
+      if (id === 'set-delete') {
+        next.alert = true;
+        return next;
+      }
+
+      // hdr-earlier, bubbles, attached photo, sent photo, scrim: no change.
+      return next;
+    }
+
+    // tapApp returns { app, hit, off }. off is true and nothing happens when
+    // the point is outside the 430 x 932 screen.
+    function tapApp(app, x, y) {
+      if (x < 0 || x > SW || y < 0 || y > SH) {
+        return { app: app, hit: null, off: true };
+      }
+      var hit = hitTest(app, x, y);
+      if (!hit) {
+        return { app: app, hit: null, off: false };
+      }
+      return { app: perform(app, hit.id), hit: hit, off: false };
+    }
+
+    // swipeApp returns { app, did }. A swipe needs |dx| >= 70 and
+    // |dx| >= 2 |dy|, and is ignored while a dialog is open.
+    function swipeApp(app, x0, y0, x1, y1) {
+      if (app.alert) {
+        return { app: app, did: null };
+      }
+      var dx = x1 - x0;
+      var dy = y1 - y0;
+      if (Math.abs(dx) < 70 || Math.abs(dx) < 2 * Math.abs(dy)) {
+        return { app: app, did: null };
+      }
+      if (app.screen === 'chats' && dx < 0) {
+        var s = cloneApp(app);
+        s.screen = 'settings';
+        return { app: s, did: 'swiped to Settings' };
+      }
+      if (app.screen === 'settings' && dx > 0) {
+        var c = cloneApp(app);
+        c.screen = 'chats';
+        return { app: c, did: 'swiped back to Messages' };
+      }
+      if ((app.screen === 'thread' || app.screen === 'photos') && dx > 0 && x0 < 80) {
+        var b = cloneApp(app);
+        if (app.screen === 'photos') {
+          b.screen = 'thread';
+        } else {
+          b.screen = 'chats';
+          b.chat = null;
+          b.attached = null;
+          b.selected = null;
+        }
+        return { app: b, did: 'swiped back' };
+      }
+      return { app: app, did: null };
+    }
+
+    // describeScreen names the current screen in words.
+    function describeScreen(app) {
+      if (app.alert) {
+        return 'a dialog asks \u201CDelete all conversations?\u201D';
+      }
+      if (app.screen === 'chats') {
+        return 'the Messages list';
+      }
+      if (app.screen === 'settings') {
+        return 'the Settings page';
+      }
+      if (app.screen === 'photos') {
+        if (app.selected) {
+          return 'the photo picker, ' + photoName(app.selected) + ' selected';
+        }
+        return 'the photo picker, nothing selected';
+      }
+      // thread
+      var out = app.chat + '\u0027s chat';
+      if (app.attached) {
+        out += ', ' + photoName(app.attached) + ' attached';
+      }
+      if (app.sent && app.sent.chat === app.chat) {
+        out += ', a photo was sent';
+      }
+      return out;
+    }
+
+    // taskDone: a photo beach was sent to Maya Chen.
+    function taskDone(app) {
+      return !!(app.sent && app.sent.chat === 'Maya Chen' && app.sent.photo === 'beach');
+    }
+
+    // policy returns what the agent wants to tap next, { id, label, why }, or null.
+    function policy(app) {
+      if (app.alert) {
+        return { id: 'alert-cancel', label: 'Cancel', why: 'a dialog is open, close it' };
+      }
+      if (app.sent) {
+        return null;
+      }
+      if (app.screen === 'settings') {
+        return { id: 'tab-chats', label: 'the Messages tab', why: 'go back to Messages' };
+      }
+      if (app.screen === 'chats') {
+        return { id: 'chat-maya', label: 'Maya Chen', why: 'open Maya Chen\u0027s chat' };
+      }
+      if (app.screen === 'photos') {
+        if (app.selected === 'beach') {
+          return { id: 'done', label: 'Done', why: 'confirm the beach photo' };
+        }
+        return { id: 'tile-beach', label: 'the Beach photo', why: 'pick the beach photo' };
+      }
+      // thread
+      if (app.chat !== 'Maya Chen') {
+        return { id: 'back', label: 'Back', why: 'go back to the chat list' };
+      }
+      if (app.attached === 'beach') {
+        return { id: 'sendbtn', label: 'Send', why: 'send the beach photo' };
+      }
+      return { id: 'share', label: 'Share a photo', why: 'share a photo with Maya' };
+    }
+
+    // worked tells whether the tap of id did its job.
+    function worked(app, id) {
+      if (id === 'chat-maya') {
+        return app.screen === 'thread' && app.chat === 'Maya Chen';
+      }
+      if (id === 'share') {
+        return app.screen === 'photos';
+      }
+      if (id === 'tile-beach') {
+        return app.selected === 'beach';
+      }
+      if (id === 'done') {
+        return app.screen === 'thread' && app.attached === 'beach';
+      }
+      if (id === 'sendbtn') {
+        return taskDone(app);
+      }
+      if (id === 'back' || id === 'tab-chats') {
+        return app.screen === 'chats';
+      }
+      if (id === 'alert-cancel') {
+        return app.alert === false;
+      }
+      return false;
+    }
+
+    // screenHtml returns the elements as markup: for each a div with its cls as
+    // class, data-id, and a style with its box as percentages of 430 x 932 with
+    // three decimals, plus st when present.
+    function screenHtml(app) {
+      var els = elementsFor(app);
+      var out = '';
+      for (var i = 0; i < els.length; i++) {
+        var e = els[i];
+        var left = (e.x / SW * 100).toFixed(3);
+        var top = (e.y / SH * 100).toFixed(3);
+        var width = (e.w / SW * 100).toFixed(3);
+        var height = (e.h / SH * 100).toFixed(3);
+        var style = 'left:' + left + '%;top:' + top + '%;width:' + width + '%;height:' + height + '%;';
+        if (e.st) {
+          style += e.st;
+        }
+        out += '<div class="' + e.cls + '" data-id="' + e.id + '" style="' + style + '">' +
+          (e.html || '') + '</div>';
+      }
+      return out;
+    }
+    // </app>
+
     // Expose for tooling in later stages; harmless here.
     if (typeof module !== 'undefined' && module.exports) {
       module.exports = {
