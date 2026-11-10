@@ -89,6 +89,21 @@ def describe_mismatch(mismatch: dict) -> str:
     )
 
 
+SCALE_CHANGE_THRESHOLD = 0.05
+
+
+def scale_changed(previous: Optional[dict], current: Optional[dict]) -> bool:
+    """True when ``current`` is a scale problem that is news against ``previous``."""
+    if current is None:
+        return False
+    if previous is None:
+        return True
+    for key in ("scale_x", "scale_y"):
+        if abs(current[key] - previous[key]) > SCALE_CHANGE_THRESHOLD * abs(previous[key]):
+            return True
+    return False
+
+
 def describe_scale_problem(problem: dict) -> str:
     """Describe a coordinate scale problem in words (Requirement 6.5)."""
     return (

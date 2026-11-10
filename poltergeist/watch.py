@@ -13,7 +13,7 @@ from typing import Callable, List, Optional
 from urllib.parse import urlencode
 from urllib.request import urlopen
 
-from poltergeist.activity import describe_activity
+from poltergeist.activity import describe_activity, scale_changed
 
 DEFAULT_SERVER = "http://127.0.0.1:8000"
 DEFAULT_INTERVAL = 0.5
@@ -46,11 +46,13 @@ class Watcher:
     def __init__(self, fetch: Callable[[Optional[str]], dict]) -> None:
         self._fetch = fetch
         self._cursor: Optional[str] = None
+        self._reported_scale: Optional[dict] = None
 
     def start(self) -> None:
         """Fetch once and remember the server's time, so history is skipped."""
         payload = self._fetch(None)
         self._cursor = payload.get("server_time")
+        self._reported_scale = payload.get("coordinate_scale_problem")
 
     def poll(self) -> List[str]:
         """Fetch new actions since the cursor and describe them.
@@ -59,6 +61,13 @@ class Watcher:
         action is reported only once.
         """
         payload = self._fetch(self._cursor)
+        problem = payload.get("coordinate_scale_problem")
+        if scale_changed(self._reported_scale, problem):
+            self._reported_scale = problem
+        else:
+            payload = dict(payload, coordinate_scale_problem=None)
+            if problem is None:
+                self._reported_scale = None
         lines = describe_activity(payload)
 
         actions = payload.get("human_actions", [])

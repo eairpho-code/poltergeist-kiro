@@ -18,7 +18,7 @@ from typing import List, Optional
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from poltergeist.activity import describe_activity
+from poltergeist.activity import describe_activity, scale_changed
 
 DEFAULT_URL = "http://127.0.0.1:8000"
 URL_ENV_VAR = "POLTERGEIST_URL"
@@ -166,24 +166,56 @@ class CursorStore:
         cleaned = re.sub(r"[^A-Za-z0-9_-]", "_", text)
         return cleaned or "default"
 
-    def load(self) -> Optional[str]:
-        """Return the stored cursor, or ``None`` when there is none."""
+    def _read(self) -> dict:
         try:
             with open(self._path, "r", encoding="utf-8") as handle:
                 data = json.load(handle)
-            cursor = data.get("cursor")
-            return cursor if isinstance(cursor, str) else None
+            return data if isinstance(data, dict) else {}
         except (OSError, ValueError):
-            return None
+            return {}
 
-    def save(self, cursor: str) -> None:
-        """Store ``cursor`` for this session."""
+    def _write(self, data: dict) -> None:
         try:
             os.makedirs(self._directory, exist_ok=True)
             with open(self._path, "w", encoding="utf-8") as handle:
-                json.dump({"cursor": cursor}, handle)
+                json.dump(data, handle)
         except OSError:
             pass
+
+    def load(self) -> Optional[str]:
+        """Return the stored cursor, or ``None`` when there is none."""
+        cursor = self._read().get("cursor")
+        return cursor if isinstance(cursor, str) else None
+
+    def save(self, cursor: str) -> None:
+        """Store ``cursor`` for this session, keeping a stored scale."""
+        data = self._read()
+        data["cursor"] = cursor
+        self._write(data)
+
+    def load_scale(self) -> Optional[dict]:
+        """Return the reported scale (``scale_x``, ``scale_y``) or ``None``."""
+        scale = self._read().get("scale")
+        if not isinstance(scale, dict):
+            return None
+        x, y = scale.get("scale_x"), scale.get("scale_y")
+        if _as_number(x) is None or _as_number(y) is None:
+            return None
+        return {"scale_x": x, "scale_y": y}
+
+    def save_scale(self, problem: Optional[dict]) -> None:
+        """Store the scale of ``problem``, or remove the stored scale for ``None``."""
+        data = self._read()
+        if problem is None:
+            if "scale" not in data:
+                return
+            del data["scale"]
+        else:
+            data["scale"] = {
+                "scale_x": problem["scale_x"],
+                "scale_y": problem["scale_y"],
+            }
+        self._write(data)
 
 
 def context_for(lines: List[str]) -> str:
@@ -222,11 +254,20 @@ def handle_event(event, server: Server, cursor: CursorStore) -> Optional[str]:
         server_time = payload.get("server_time")
         if server_time:
             cursor.save(server_time)
+        cursor.save_scale(payload.get("coordinate_scale_problem"))
         return None
 
     actions = payload.get("human_actions", [])
     if actions:
         cursor.save(actions[-1]["timestamp"])
+
+    problem = payload.get("coordinate_scale_problem")
+    if scale_changed(cursor.load_scale(), problem):
+        cursor.save_scale(problem)
+    else:
+        payload = dict(payload, coordinate_scale_problem=None)
+        if problem is None:
+            cursor.save_scale(None)
 
     lines = describe_activity(payload)
     if not lines:

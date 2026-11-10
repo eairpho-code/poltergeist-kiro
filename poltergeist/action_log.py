@@ -360,7 +360,8 @@ class ActionLog:
                 m for m in all_mismatches if id(m.human_click) in returned_humans
             ]
 
-        scale_problem = detect_scale_problem(mismatches)
+        # The scale problem belongs to the whole log, whatever the cursor.
+        scale_problem = detect_scale_problem(all_mismatches)
 
         return HumanActionsResponse(
             human_actions=human_actions,
