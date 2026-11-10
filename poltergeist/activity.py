@@ -37,12 +37,23 @@ def _role_of(action: dict) -> Optional[str]:
     return None
 
 
+def _label_of(action: dict) -> Optional[str]:
+    """Return the UI element label of an action, or ``None`` when absent/empty."""
+    ui_element = action.get("ui_element")
+    if isinstance(ui_element, dict):
+        label = ui_element.get("label")
+        if label:
+            return label
+    return None
+
+
 def describe_action(action: dict) -> str:
     """Describe a single human action as one sentence.
 
     A click becomes ``the human clicked (x, y) at HH:MM:SS UTC`` and a drag
     becomes ``the human dragged from (x, y) to (x, y) at HH:MM:SS UTC``. When
-    the UI element role is known, `` on a <role>`` is inserted before `` at``.
+    the UI element role is known, the element is named before `` at``: ``on a
+    <role> "<label>"``, or ``on the text "<label>"`` / ``on some text`` for text.
     Coordinates carry one decimal.
     """
     start = _format_point(action["normalized_x"], action["normalized_y"])
@@ -54,8 +65,11 @@ def describe_action(action: dict) -> str:
         body = f"the human clicked {start}"
 
     role = _role_of(action)
-    if role is not None:
-        body += f" on a {role}"
+    label = _label_of(action)
+    if role == "text":
+        body += f' on the text "{label}"' if label else " on some text"
+    elif role is not None:
+        body += f' on a {role} "{label}"' if label else f" on a {role}"
 
     return f"{body} at {_format_time(action['timestamp'])}"
 
