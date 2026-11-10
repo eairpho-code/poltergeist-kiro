@@ -1372,8 +1372,11 @@
       } else {
         body = 'the human clicked ' + start;
       }
-      if (role !== null && role !== undefined) {
-        body += ' on a ' + role;
+      var label = action.label;
+      if (role === 'text') {
+        body += label ? ' on the text "' + label + '"' : ' on some text';
+      } else if (role !== null && role !== undefined) {
+        body += label ? ' on a ' + role + ' "' + label + '"' : ' on a ' + role;
       }
       return body + ' at ' + clock(action.t) + ' UTC';
     }
@@ -1387,6 +1390,16 @@
       return 'the human\u0027s click at ' + humanPoint + ' came ' + fixed(seconds, 1) +
         's after the agent\u0027s click at ' + agentPoint + ', offset ' + offset +
         ': that click probably missed or did something the human did not want';
+    }
+
+    // scaleChanged: is `current` news compared with the scale problem last
+    // told (`previous`)? Same rule as scale_changed in poltergeist/activity.py.
+    var SCALE_CHANGE_THRESHOLD = 0.05;
+    function scaleChanged(previous, current) {
+      if (current === null || current === undefined) return false;
+      if (previous === null || previous === undefined) return true;
+      return Math.abs(current.scaleX - previous.scaleX) > SCALE_CHANGE_THRESHOLD * Math.abs(previous.scaleX) ||
+        Math.abs(current.scaleY - previous.scaleY) > SCALE_CHANGE_THRESHOLD * Math.abs(previous.scaleY);
     }
 
     // describeScale: a coordinate scale problem in words.
@@ -2711,9 +2724,15 @@
               feedAdd('hook', '&nbsp;&bull; ' + esc(describeMismatch(m)));
             }
           }
-          if (snap.scale && !S.corrected) {
-            feedAdd('hook', '&nbsp;&bull; ' + esc(describeScale(snap.scale)));
+        }
+        if (!snap.scale) {
+          S.toldScale = null;
+        } else if (scaleChanged(S.toldScale, snap.scale)) {
+          if (!newOnes.length) {
+            feedAdd('hook', '<b>hook</b> Poltergeist: since your last action:');
           }
+          feedAdd('hook', '&nbsp;&bull; ' + esc(describeScale(snap.scale)));
+          S.toldScale = snap.scale;
         }
         S.heardUntil = Date.now();
         return snap;
@@ -2825,6 +2844,7 @@
         if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
         S = freshState();
         S.heardUntil = 0;
+        S.toldScale = null;
         S.auto = false;
         // Reflect the currently chosen window.
         var pressed = document.querySelector('[data-win][aria-pressed="true"]');
@@ -2980,7 +3000,8 @@
         detectScaleProblem: detectScaleProblem,
         describeAction: describeAction,
         describeMismatch: describeMismatch,
-        describeScale: describeScale
+        describeScale: describeScale,
+        scaleChanged: scaleChanged
       };
     }
   })();

@@ -142,6 +142,9 @@ a named agent app are treated as the human's only when `--include-synthetic` is
 set; otherwise they are ignored. The observer reports in device points with a
 scale factor of 1.
 
+The element it reports for a click is the nearest interactive element up to 6
+levels above the click, so a click on the text inside a button reports the button.
+
 ## How an agent hears about human actions
 
 There are three ways an agent learns what the human did:

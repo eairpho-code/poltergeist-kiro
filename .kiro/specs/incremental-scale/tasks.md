@@ -17,9 +17,9 @@ Two stages. Stage 1 is the server, the watcher and the hook. Stage 2 is the demo
     - _Requirements: 2.4, 2.5, 3.1, 3.2_
   - [x]* 1.5 Tests: `tests/test_incremental_scale.py` (provided)
 
-- [ ] 2. The demo and the documentation
-  - [ ] 2.1 Add `scaleChanged` to the core of `demo/index.html` and use it in `hearStep`
+- [x] 2. The demo and the documentation
+  - [x] 2.1 Add `scaleChanged` to the core of `demo/index.html` and use it in `hearStep`
     - _Requirements: 4.1, 4.2_
-  - [ ]* 2.2 Check: `python demo/check_port.py` (provided)
-  - [ ] 2.3 Update `docs/usage.md`
+  - [x]* 2.2 Check: `python demo/check_port.py` (provided)
+  - [x] 2.3 Update `docs/usage.md`
     - _Requirements: 5.1_

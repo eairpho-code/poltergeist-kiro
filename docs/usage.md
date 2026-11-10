@@ -127,7 +127,9 @@ Returns an object with:
 - `mismatches` — each with `agent_click`, `human_click` (both the same shape as
   an action), `offset_x`, `offset_y` and `distance`.
 - `coordinate_scale_problem` — `null`, or an object with `sample_size`,
-  `scale_x`, `scale_y`, `spread_x` and `spread_y`.
+  `scale_x`, `scale_y`, `spread_x` and `spread_y`. It is computed from the whole
+  log whatever the cursor is; only `human_actions` and `mismatches` are cut at
+  the cursor.
 
 ### `clear_action_log`
 
@@ -288,6 +290,10 @@ A coordinate scale problem, when present, has this shape:
 }
 ```
 
+The `coordinate_scale_problem` is computed from the mismatches of the whole log,
+whatever `since` is. `human_actions` and `mismatches` contain only what comes
+after `since`.
+
 A bad `since` value is answered with HTTP 400:
 
 ```json
@@ -315,12 +321,36 @@ The watcher is configured by command-line options, not environment variables:
 | `--server` | `http://127.0.0.1:8000` | The server base URL to poll. |
 | `--interval` | `0.5` | Seconds between polls. |
 
+The watcher reports a scale problem once, when it first appears, and again only
+when it changes: when `scale_x` or `scale_y` differs from the last reported
+value by more than 5 percent of that value. A scale problem that already exists
+when the watcher starts counts as reported. When the server returns no scale
+problem, the watcher forgets the reported one, so one that appears again is
+reported again.
+
 ### The Claude Code hook (`poltergeist-claude-hook`)
 
 | Variable | Default | Effect |
 | --- | --- | --- |
 | `POLTERGEIST_URL` | `http://127.0.0.1:8000` | The server base URL the hook posts the agent gesture to and reads human actions from. |
 | `POLTERGEIST_HOOK_STATE_DIR` | the system temp directory | Where the hook stores its per-session cursor file. |
+
+The hook follows the same once-then-on-change rule as the watcher. Its state
+file is a JSON object with the key `cursor` and, when a scale problem has been
+reported, the key `scale`: an object with `scale_x` and `scale_y`. The first
+call of a session says nothing and records the scale problem that exists then
+as reported.
+
+### What the observer reports as the element
+
+The observer reports the nearest interactive element up to 6 levels above the
+click, not the deepest element: a click on the text inside a button reports the
+button. An element is interactive when it has the `AXPress` action or is a
+button, link, cell, check box, radio button, switch, text field, text area,
+slider, menu item or pop-up button. Windows and applications are never chosen.
+When there is none, the element under the click is reported. In sentences, text
+is named as `on the text "<label>"` (or `on some text` without a label), and
+other elements as `on a <role> "<label>"` (or `on a <role>`).
 
 ## Privacy notes
 
