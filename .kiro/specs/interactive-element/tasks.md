@@ -6,13 +6,13 @@ Three stages: the pure function, the executable that uses it, and the sentences 
 
 ## Tasks
 
-- [ ] 1. The pure function
-  - [ ] 1.1 Create `ElementPicker.swift` with `ElementInfo` and `ElementPicker`
+- [x] 1. The pure function
+  - [x] 1.1 Create `ElementPicker.swift` with `ElementInfo` and `ElementPicker`
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
-  - [ ]* 1.2 Unit tests: `ElementPickerTests` (provided)
+  - [x]* 1.2 Unit tests: `ElementPickerTests` (provided)
 
-- [ ] 2. Use it in the observer
-  - [ ] 2.1 Walk up from the element under the click and report the chosen element in `SimulatorScreens.swift`
+- [x] 2. Use it in the observer
+  - [x] 2.1 Walk up from the element under the click and report the chosen element in `SimulatorScreens.swift`
     - _Requirements: 2.1, 2.2, 2.3_
 
 - [ ] 3. The sentences, the demo and the documentation

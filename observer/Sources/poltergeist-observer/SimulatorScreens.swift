@@ -72,7 +72,24 @@ final class SimulatorScreens {
     /// The element under a global point as a `UIElementPayload`: its short role, and its short
     /// label only when asked. Returns nothing when there is no element.
     func element(atGlobal point: CGPoint, includeLabel: Bool) -> UIElementPayload? {
-        guard let element = elementAtPosition(point) else { return nil }
+        guard let hit = elementAtPosition(point) else { return nil }
+        // Walk up from the hit, collecting role and actions. Any error ends the walk.
+        var elements: [AXUIElement] = [hit]
+        var chain: [ElementInfo] = [elementInfo(hit)]
+        while elements.count <= ElementPicker.maxAncestors {
+            var parentRef: CFTypeRef?
+            guard
+                AXUIElementCopyAttributeValue(
+                    elements[elements.count - 1], kAXParentAttribute as CFString, &parentRef
+                ) == .success,
+                let parentRef = parentRef,
+                CFGetTypeID(parentRef) == AXUIElementGetTypeID()
+            else { break }
+            let parent = parentRef as! AXUIElement
+            elements.append(parent)
+            chain.append(elementInfo(parent))
+        }
+        let element = elements[ElementPicker.chosenIndex(in: chain)]
         let role = axString(element, kAXRoleAttribute as CFString) ?? ""
         let shortRole = RoleNames.name(forAXRole: role)
         guard includeLabel else {
@@ -85,6 +102,16 @@ final class SimulatorScreens {
     }
 
     // MARK: - Accessibility helpers
+
+    private func elementInfo(_ element: AXUIElement) -> ElementInfo {
+        let role = axString(element, kAXRoleAttribute as CFString) ?? ""
+        var names: CFArray?
+        var actions: [String] = []
+        if AXUIElementCopyActionNames(element, &names) == .success, let list = names as? [String] {
+            actions = list
+        }
+        return ElementInfo(role: role, actions: actions)
+    }
 
     private func runningSimulator() -> NSRunningApplication? {
         NSRunningApplication.runningApplications(withBundleIdentifier: Self.simulatorBundleID).first
