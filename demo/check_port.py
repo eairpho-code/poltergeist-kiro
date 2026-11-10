@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from poltergeist.action_log import ClickAction, UIElement  # noqa: E402
-from poltergeist.activity import describe_action, describe_mismatch  # noqa: E402
+from poltergeist.activity import describe_action, describe_mismatch, scale_changed  # noqa: E402
 from poltergeist import detection  # noqa: E402
 from poltergeist.detection import detect_mismatches, detect_scale_problem  # noqa: E402
 
@@ -30,11 +30,13 @@ SCENARIOS = 3000
 HARNESS = """
 const fs = require('fs');
 %CORE%
-const scenarios = JSON.parse(fs.readFileSync(0, 'utf8'));
-const out = scenarios.map(scenario => {
+const input = JSON.parse(fs.readFileSync(0, 'utf8'));
+const scenarios = input.scenarios;
+const results = scenarios.map(scenario => {
   const actions = scenario.rows.map(r => {
     const a = makeAction(r.actor, r.kind, r.x, r.y, r.ex, r.ey, r.scale, r.t);
     a.role = r.role;
+    a.label = r.label;
     return a;
   });
   const mism = detectMismatches(actions, scenario.windowMs);
@@ -47,7 +49,8 @@ const out = scenarios.map(scenario => {
     mismatchLines: mism.map(describeMismatch),
   };
 });
-process.stdout.write(JSON.stringify(out));
+const changed = input.pairs.map(p => scaleChanged(p[0], p[1]));
+process.stdout.write(JSON.stringify({ results, changed }));
 """
 
 
@@ -84,7 +87,8 @@ def random_scenario(rng: random.Random) -> list:
     for r in rows:
         r["ex"] = rng.uniform(0, 430 * r["scale"])
         r["ey"] = rng.uniform(0, 932 * r["scale"])
-        r["role"] = rng.choice([None, "button"]) if r["actor"] == "human" else None
+        r["role"] = rng.choice([None, "button", "text", "switch", "text_field"]) if r["actor"] == "human" else None
+        r["label"] = rng.choice([None, "", "I", "Candle I", "2 of 3 candles lit"]) if r["role"] else None
         r["t"] += BASE_MS
     rng.shuffle(rows)
     return rows
@@ -98,7 +102,7 @@ def to_python(rows: list) -> list:
             timestamp=stamp, actor=r["actor"],
             normalized_x=r["x"] / r["scale"], normalized_y=r["y"] / r["scale"],
             raw_x=r["x"], raw_y=r["y"], coordinate_space="device_points", scale_factor=r["scale"],
-            ui_element=UIElement(role=r["role"]) if r["role"] else None,
+            ui_element=UIElement(role=r["role"], label=r["label"]) if r["role"] else None,
             kind=r["kind"],
         )
         if r["kind"] == "drag":
@@ -111,8 +115,24 @@ def as_dict(action: ClickAction) -> dict:
     return {
         "timestamp": action.timestamp, "normalized_x": action.normalized_x, "normalized_y": action.normalized_y,
         "kind": action.kind, "end_x": action.end_x, "end_y": action.end_y,
-        "ui_element": {"role": action.ui_element.role} if action.ui_element else None,
+        "ui_element": {"role": action.ui_element.role, "label": action.ui_element.label} if action.ui_element else None,
     }
+
+
+def random_scale_pairs(rng: random.Random, count: int = 2000) -> list:
+    """Pairs (previous, current) of scale problems or None, for scale_changed."""
+    factors = [1.0, 1.0, 1.04, 1.049, 1.05, 1.051, 1.06, 0.96, 0.95, 0.94, 0.9, 1.2]
+    pairs = []
+    for _ in range(count):
+        previous = None if rng.random() < 0.2 else (rng.uniform(1, 3), rng.uniform(1, 3))
+        if rng.random() < 0.15:
+            current = None
+        elif previous is None:
+            current = (rng.uniform(1, 3), rng.uniform(1, 3))
+        else:
+            current = (previous[0] * rng.choice(factors), previous[1] * rng.choice(factors))
+        pairs.append((previous, current))
+    return pairs
 
 
 def close(a: float, b: float) -> bool:
@@ -122,15 +142,20 @@ def close(a: float, b: float) -> bool:
 def main() -> int:
     rng = random.Random(20261103)
     scenarios = [{"rows": random_scenario(rng), "windowMs": rng.choice([5000, 5000, 15000, 30000])} for _ in range(SCENARIOS)]
+    pairs = random_scale_pairs(rng)
+    js_pairs_input = [[None if p is None else {"scaleX": p[0], "scaleY": p[1]} for p in pair] for pair in pairs]
 
     with tempfile.TemporaryDirectory() as tmp:
         script = Path(tmp) / "run.js"
         script.write_text(HARNESS.replace("%CORE%", extract_core()))
-        result = subprocess.run(["node", str(script)], input=json.dumps(scenarios), capture_output=True, text=True)
+        result = subprocess.run(
+            ["node", str(script)], input=json.dumps({"scenarios": scenarios, "pairs": js_pairs_input}),
+            capture_output=True, text=True)
     if result.returncode != 0:
         print(result.stderr)
         return 1
-    js_results = json.loads(result.stdout)
+    parsed = json.loads(result.stdout)
+    js_results, js_changed = parsed["results"], parsed["changed"]
 
     paired = scaled = 0
     failures = []
@@ -170,7 +195,12 @@ def main() -> int:
         paired += bool(mismatches)
         scaled += problem is not None
 
-    print(f"{len(scenarios)} random logs: {paired} with pairs, {scaled} with a scale problem")
+    for number, (pair, js) in enumerate(zip(pairs, js_changed)):
+        as_problem = lambda p: None if p is None else {"scale_x": p[0], "scale_y": p[1]}
+        if scale_changed(as_problem(pair[0]), as_problem(pair[1])) != js:
+            failures.append((number, "scale_changed differs", pair, js))
+
+    print(f"{len(scenarios)} random logs: {paired} with pairs, {scaled} with a scale problem; {len(pairs)} scale_changed pairs")
     if failures:
         print(f"{len(failures)} differences, first: {failures[0]}")
         return 1
