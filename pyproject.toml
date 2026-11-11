@@ -24,6 +24,7 @@ dev = [
 poltergeist-server = "poltergeist.server:main"
 poltergeist-watch = "poltergeist.watch:main"
 poltergeist-claude-hook = "poltergeist.claude_hook:main"
+poltergeist-kiro-hook = "poltergeist.kiro_hook:main"
 
 [tool.setuptools.packages.find]
 include = ["poltergeist*"]

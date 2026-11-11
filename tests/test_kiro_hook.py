@@ -258,3 +258,42 @@ def test_slow_server_does_not_hang_the_agent():
     assert result.returncode == 0
     assert result.stdout == "" and result.stderr == ""
     assert took < 6
+
+
+# --- shape of the example files in integrations/kiro ---
+
+import pathlib
+
+_ROOT = pathlib.Path(__file__).resolve().parent.parent
+_KIRO = _ROOT / "integrations" / "kiro"
+
+
+def test_hooks_file_shape():
+    data = json.loads((_KIRO / "hooks" / "poltergeist.json").read_text())
+    assert data["version"] == "v1"
+    by_trigger = {h["trigger"]: h for h in data["hooks"]}
+    assert len(data["hooks"]) == 2 and set(by_trigger) == {"PreToolUse", "PostToolUse"}
+    pre, post = by_trigger["PreToolUse"], by_trigger["PostToolUse"]
+    assert pre["action"]["type"] == "command"
+    assert "poltergeist-kiro-hook" in pre["action"]["command"]
+    assert post["action"]["type"] == "agent"
+    assert "get_human_actions" in post["action"]["prompt"]
+    assert pre["matcher"] == post["matcher"] == "@ios-simulator"
+    assert pre["name"] and post["name"]
+
+
+def test_mcp_file_shape():
+    servers = json.loads((_KIRO / "mcp.json").read_text())["mcpServers"]
+    assert servers["poltergeist"]["url"].endswith("/mcp")
+    assert servers["ios-simulator"]["command"] == "npx"
+    assert servers["ios-simulator"]["args"] == ["-y", "ios-simulator-mcp"]
+
+
+def test_steering_file_text():
+    text = (_KIRO / "steering" / "poltergeist.md").read_text()
+    assert "get_human_actions" in text and "since_timestamp" in text
+    assert "mismatch" in text and "scale" in text
+
+
+def test_console_script_declared():
+    assert 'poltergeist-kiro-hook = "poltergeist.kiro_hook:main"' in (_ROOT / "pyproject.toml").read_text()

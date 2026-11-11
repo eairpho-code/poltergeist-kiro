@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "poltergeist": {
+      "url": "http://127.0.0.1:8000/mcp"
+    },
+    "ios-simulator": {
+      "command": "npx",
+      "args": ["-y", "ios-simulator-mcp"]
+    }
+  }
+}
