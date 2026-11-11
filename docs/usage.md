@@ -352,6 +352,42 @@ When there is none, the element under the click is reported. In sentences, text
 is named as `on the text "<label>"` (or `on some text` without a label), and
 other elements as `on a <role> "<label>"` (or `on a <role>`).
 
+## Use Poltergeist from Kiro
+
+Poltergeist works with `kiro-cli` through Kiro's own hooks, steering and MCP.
+The example files are in `integrations/kiro/`.
+
+1. Start the server over HTTP: `POLTERGEIST_TRANSPORT=streamable-http poltergeist-server`.
+2. Copy the files into your project's `.kiro/` folder:
+   `integrations/kiro/hooks/poltergeist.json` to `.kiro/hooks/`,
+   `integrations/kiro/steering/poltergeist.md` to `.kiro/steering/`, and
+   merge `integrations/kiro/mcp.json` into your `mcp.json`. It connects the
+   `poltergeist` server by URL and starts the simulator server with
+   `npx -y ios-simulator-mcp`.
+3. Run Kiro with hooks on: `kiro-cli chat --v3`.
+
+The `PreToolUse` command hook runs `poltergeist-kiro-hook`, which records the
+agent's `ui_tap` and `ui_swipe` on `POST /agent-click` (device points, scale
+factor 1; the server address comes from `POLTERGEIST_URL`, default
+`http://127.0.0.1:8000`). The `PostToolUse` agent hook tells the model to call
+`get_human_actions` before its next simulator action. Both hooks use the matcher
+`@ios-simulator`, so the server must be named `ios-simulator` in `mcp.json`.
+
+What to know:
+
+- A command hook's output is not given to the model. That is why the model is
+  told through an `agent` hook instead.
+- Hooks run on the V3 engine only. The older default engine does not read
+  `.kiro/hooks/`.
+
+What was checked: with `kiro-cli chat --v3`, a model drove a stand-in simulator
+MCP server with two hooks; it called `get_human_actions` after every tap,
+reported each mismatch and, after the third tap, the coordinate scale problem.
+
+What was not checked: the real `ios-simulator-mcp` was not run. Its tool names
+and arguments (`ui_tap`, `ui_swipe`) come from its public README. The Kiro IDE
+was not used either; only `kiro-cli` was.
+
 ## Privacy notes
 
 - **Labels are off by default in the observer.** The macOS observer sends the
