@@ -1113,7 +1113,11 @@
           human: human,
           offX: human.nx - chosen.nx,
           offY: human.ny - chosen.ny,
-          distance: bestDistance
+          distance: bestDistance,
+          // The ratio of this pair alone; null when the human coordinate is
+          // too close to zero (the same NEAR_ZERO threshold as the scale rule).
+          ratioX: Math.abs(human.nx) >= NEAR_ZERO ? chosen.nx / human.nx : null,
+          ratioY: Math.abs(human.ny) >= NEAR_ZERO ? chosen.ny / human.ny : null
         });
       }
 
@@ -1381,6 +1385,20 @@
       return body + ' at ' + clock(action.t) + ' UTC';
     }
 
+    // ratioPart(prefix, v) -> "x1.50", or "x?" for an unknown value.
+    function ratioPart(prefix, v) {
+      if (typeof v !== 'number' || !isFinite(v)) return prefix + '?';
+      return prefix + fixed(v, 2);
+    }
+
+    // ratioPhrase: the ratio of one pair, or '' when both are unknown.
+    function ratioPhrase(m) {
+      var x = ratioPart('x', m.ratioX);
+      var y = ratioPart('y', m.ratioY);
+      if (x === 'x?' && y === 'y?') return '';
+      return ', ratio ' + x + ' / ' + y + ' for this pair alone';
+    }
+
     // describeMismatch: how long after and how far off the human clicked.
     function describeMismatch(m) {
       var seconds = (m.human.t - m.agent.t) / 1000;
@@ -1389,6 +1407,7 @@
       var offset = '(' + signed(m.offX) + ', ' + signed(m.offY) + ')';
       return 'the human\u0027s click at ' + humanPoint + ' came ' + fixed(seconds, 1) +
         's after the agent\u0027s click at ' + agentPoint + ', offset ' + offset +
+        ratioPhrase(m) +
         ': that click probably missed or did something the human did not want';
     }
 
@@ -2196,7 +2215,9 @@
           human_click: actionJson(m.human),
           offset_x: m.offX,
           offset_y: m.offY,
-          distance: m.distance
+          distance: m.distance,
+          ratio_x: m.ratioX,
+          ratio_y: m.ratioY
         };
       }
 

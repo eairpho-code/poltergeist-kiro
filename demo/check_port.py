@@ -43,7 +43,7 @@ const results = scenarios.map(scenario => {
   const scale = detectScaleProblem(mism);
   const humans = actions.filter(a => a.actor === 'human').sort((p, q) => p.t - q.t);
   return {
-    pairs: mism.map(m => [actions.indexOf(m.agent), actions.indexOf(m.human), m.offX, m.offY, m.distance]),
+    pairs: mism.map(m => [actions.indexOf(m.agent), actions.indexOf(m.human), m.offX, m.offY, m.distance, m.ratioX, m.ratioY]),
     scale,
     actionLines: humans.map(a => describeAction(a, a.role)),
     mismatchLines: mism.map(describeMismatch),
@@ -173,6 +173,9 @@ def main() -> int:
             failures.append((number, "pairs differ", py_pairs, js_pairs))
             continue
         for m, p in zip(mismatches, js["pairs"]):
+            for py_ratio, js_ratio in ((m.ratio_x, p[5]), (m.ratio_y, p[6])):
+                if (py_ratio is None) != (js_ratio is None) or (py_ratio is not None and not close(py_ratio, js_ratio)):
+                    failures.append((number, "ratios differ", m, p))
             if not (close(m.offset_x, p[2]) and close(m.offset_y, p[3]) and close(m.distance, p[4])):
                 failures.append((number, "offsets differ", m, p))
 
@@ -188,7 +191,8 @@ def main() -> int:
             failures.append((number, "action sentences differ"))
         py_lines = [describe_mismatch({
             "agent_click": as_dict(m.agent_click), "human_click": as_dict(m.human_click),
-            "offset_x": m.offset_x, "offset_y": m.offset_y}) for m in mismatches]
+            "offset_x": m.offset_x, "offset_y": m.offset_y,
+            "ratio_x": m.ratio_x, "ratio_y": m.ratio_y}) for m in mismatches]
         if py_lines != js["mismatchLines"]:
             failures.append((number, "mismatch sentences differ", py_lines, js["mismatchLines"]))
 
