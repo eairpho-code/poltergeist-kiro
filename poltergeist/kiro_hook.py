@@ -89,17 +89,47 @@ def post_agent_click(base_url: str, body: dict) -> None:
         response.read()
 
 
-def main(stdin=None, environ=None) -> int:
-    """Entry point for ``poltergeist-kiro-hook``. Always returns 0."""
+def url_from_args(argv) -> Optional[str]:
+    """Return the address given by ``--url ADDRESS`` or ``--url=ADDRESS``.
+
+    Any other argument is ignored. A ``--url`` without a value (or with an
+    empty one) gives ``None``. The first usable ``--url`` wins.
+    """
+    args = list(argv)
+    for i, arg in enumerate(args):
+        if not isinstance(arg, str):
+            continue
+        value = None
+        if arg == "--url":
+            if i + 1 < len(args) and isinstance(args[i + 1], str):
+                value = args[i + 1]
+                if value.startswith("--"):
+                    value = None
+        elif arg.startswith("--url="):
+            value = arg[len("--url="):]
+        if value:
+            return value
+    return None
+
+
+def main(stdin=None, environ=None, argv=None) -> int:
+    """Entry point for ``poltergeist-kiro-hook``. Always returns 0.
+
+    The server address is, in order: ``--url``, ``POLTERGEIST_URL``, then
+    ``DEFAULT_URL``.
+    """
     try:
         if stdin is None:
             stdin = sys.stdin
         if environ is None:
             environ = os.environ
+        if argv is None:
+            argv = sys.argv[1:]
+        url = url_from_args(argv) or environ.get(URL_ENV_VAR) or DEFAULT_URL
         event = json.load(stdin)
         body = gesture_from_event(event)
         if body is not None:
-            post_agent_click(environ.get(URL_ENV_VAR, DEFAULT_URL), body)
+            post_agent_click(url, body)
     except BaseException:
         pass
     return 0

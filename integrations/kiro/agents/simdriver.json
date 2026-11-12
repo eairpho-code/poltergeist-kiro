@@ -1,0 +1,7 @@
+{
+  "name": "simdriver",
+  "tools": ["@ios-simulator", "@poltergeist"],
+  "allowedTools": ["@ios-simulator", "@poltergeist"],
+  "includeMcpJson": true,
+  "resources": ["file://.kiro/steering/**/*.md"]
+}

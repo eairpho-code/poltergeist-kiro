@@ -7,7 +7,7 @@
       "matcher": "@ios-simulator",
       "action": {
         "type": "command",
-        "command": "poltergeist-kiro-hook"
+        "command": "/ABSOLUTE/PATH/TO/poltergeist-kiro-hook --url http://127.0.0.1:8000"
       }
     },
     {

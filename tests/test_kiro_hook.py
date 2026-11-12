@@ -69,7 +69,7 @@ def _event(name, tool_input=None, **extra):
 def _run(event, url):
     """Run main() in-process; return (exit code, requests are on the stub)."""
     text = event if isinstance(event, str) else json.dumps(event)
-    return kiro_hook.main(io.StringIO(text), {kiro_hook.URL_ENV_VAR: url})
+    return kiro_hook.main(io.StringIO(text), {kiro_hook.URL_ENV_VAR: url}, [])
 
 
 def _tap(x, y):
@@ -275,7 +275,9 @@ def test_hooks_file_shape():
     assert len(data["hooks"]) == 2 and set(by_trigger) == {"PreToolUse", "PostToolUse"}
     pre, post = by_trigger["PreToolUse"], by_trigger["PostToolUse"]
     assert pre["action"]["type"] == "command"
-    assert "poltergeist-kiro-hook" in pre["action"]["command"]
+    assert pre["action"]["command"] == (
+        "/ABSOLUTE/PATH/TO/poltergeist-kiro-hook --url http://127.0.0.1:8000"
+    )
     assert post["action"]["type"] == "agent"
     assert "get_human_actions" in post["action"]["prompt"]
     assert pre["matcher"] == post["matcher"] == "@ios-simulator"
@@ -297,3 +299,66 @@ def test_steering_file_text():
 
 def test_console_script_declared():
     assert 'poltergeist-kiro-hook = "poltergeist.kiro_hook:main"' in (_ROOT / "pyproject.toml").read_text()
+
+
+# --- the --url argument ---
+
+
+def _run_args(event, argv, environ):
+    return kiro_hook.main(io.StringIO(json.dumps(event)), environ, argv)
+
+
+_TAP_EVENT = _event("mcp_ios_simulator_ui_tap", {"x": 3, "y": 4})
+
+
+def test_url_argument_wins_over_environment(stub):
+    assert _run_args(_TAP_EVENT, ["--url", stub.url], {"POLTERGEIST_URL": "http://127.0.0.1:1"}) == 0
+    assert stub.requests == [("/agent-click", _tap(3, 4))]
+
+
+def test_url_equals_form(stub):
+    _run_args(_TAP_EVENT, [f"--url={stub.url}"], {"POLTERGEIST_URL": "http://127.0.0.1:1"})
+    assert stub.requests == [("/agent-click", _tap(3, 4))]
+
+
+def test_environment_used_without_argument(stub):
+    _run_args(_TAP_EVENT, [], {"POLTERGEIST_URL": stub.url})
+    assert stub.requests == [("/agent-click", _tap(3, 4))]
+
+
+@pytest.mark.parametrize("argv", [["--url"], ["--url", ""], ["--url="], ["--url", "--bogus"]])
+def test_url_without_value_falls_back_to_environment(stub, argv):
+    assert _run_args(_TAP_EVENT, argv, {"POLTERGEIST_URL": stub.url}) == 0
+    assert stub.requests == [("/agent-click", _tap(3, 4))]
+
+
+def test_unknown_arguments_are_ignored(stub):
+    _run_args(_TAP_EVENT, ["--bogus", "--url", stub.url, "extra"], {})
+    assert stub.requests == [("/agent-click", _tap(3, 4))]
+
+
+def test_url_from_args_values():
+    assert kiro_hook.url_from_args([]) is None
+    assert kiro_hook.url_from_args(["x", "--url", "http://a"]) == "http://a"
+    assert kiro_hook.url_from_args(["--url=http://b"]) == "http://b"
+
+
+def test_module_takes_url_argument(stub):
+    result = subprocess.run(
+        [sys.executable, "-m", "poltergeist.kiro_hook", "--url", stub.url],
+        input=json.dumps(_TAP_EVENT),
+        capture_output=True,
+        text=True,
+        env={"PATH": ""},
+        timeout=30,
+    )
+    assert result.returncode == 0 and result.stdout == "" and result.stderr == ""
+    assert stub.requests == [("/agent-click", _tap(3, 4))]
+
+
+def test_agent_file_shape():
+    data = json.loads((_KIRO / "agents" / "simdriver.json").read_text())
+    assert data["name"] == "simdriver"
+    assert data["tools"] == data["allowedTools"] == ["@ios-simulator", "@poltergeist"]
+    assert data["includeMcpJson"] is True
+    assert data["resources"] == ["file://.kiro/steering/**/*.md"]
