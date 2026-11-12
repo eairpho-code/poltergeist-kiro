@@ -24,12 +24,12 @@ This plan adds the console script `poltergeist` with `init kiro` and `doctor`. E
   - [x] 2.6 Tests in `tests/test_cli_init.py`, including the package data comparison
     - _Requirements: 4.3, 11.1_
 
-- [ ] 3. `poltergeist doctor`
-  - [ ] 3.1 The nine checks in the fixed order, the summary line and the exit code
+- [x] 3. `poltergeist doctor`
+  - [x] 3.1 The nine checks in the fixed order, the summary line and the exit code
     - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7, 9.8, 9.9_
-  - [ ] 3.2 External commands with a 5 second timeout; a missing or hung command is a `warn`
+  - [x] 3.2 External commands with a 5 second timeout; a missing or hung command is a `warn`
     - _Requirements: 10.1, 10.2_
-  - [ ] 3.3 Tests in `tests/test_cli_doctor.py`
+  - [x] 3.3 Tests in `tests/test_cli_doctor.py`
     - _Requirements: 11.1_
 
 - [ ] 4. Documentation
