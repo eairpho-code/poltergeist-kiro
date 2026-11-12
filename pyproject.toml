@@ -25,9 +25,13 @@ poltergeist-server = "poltergeist.server:main"
 poltergeist-watch = "poltergeist.watch:main"
 poltergeist-claude-hook = "poltergeist.claude_hook:main"
 poltergeist-kiro-hook = "poltergeist.kiro_hook:main"
+poltergeist = "poltergeist.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["poltergeist*"]
+
+[tool.setuptools.package-data]
+poltergeist = ["kiro_files/*/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

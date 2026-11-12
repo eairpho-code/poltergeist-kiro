@@ -1,0 +1,23 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "poltergeist-record-agent-tap",
+      "trigger": "PreToolUse",
+      "matcher": "@ios-simulator",
+      "action": {
+        "type": "command",
+        "command": "/ABSOLUTE/PATH/TO/poltergeist-kiro-hook --url http://127.0.0.1:8000"
+      }
+    },
+    {
+      "name": "poltergeist-check-human-actions",
+      "trigger": "PostToolUse",
+      "matcher": "@ios-simulator",
+      "action": {
+        "type": "agent",
+        "prompt": "Poltergeist records the clicks a human makes on the simulator. Before your next simulator action, call the get_human_actions tool of the poltergeist server. Pass since_timestamp with the latest human action time you have already seen. If it reports a mismatch, use the human's click point instead of yours. If it reports a coordinate scale problem, divide your coordinates by the reported ratio and check with your next click."
+      }
+    }
+  ]
+}
