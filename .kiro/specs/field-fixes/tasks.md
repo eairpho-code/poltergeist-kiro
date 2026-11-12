@@ -10,16 +10,16 @@ This plan fixes the five things seen in a real run: the ratio of a pair, the pai
   - [x] 1.1 Write `requirements.md`, `design.md` and `tasks.md` in `.kiro/specs/field-fixes/`
     - _Requirements: 1.1 to 7.4_
 
-- [ ] 2. The ratio and the window
-  - [ ] 2.1 Add `ratio_x` and `ratio_y` (default `None`) to `Mismatch` in `poltergeist/action_log.py`
+- [x] 2. The ratio and the window
+  - [x] 2.1 Add `ratio_x` and `ratio_y` (default `None`) to `Mismatch` in `poltergeist/action_log.py`
     - _Requirements: 1.1, 1.3, 1.4_
-  - [ ] 2.2 Fill the ratios in `detect_mismatches`, `None` below the 1.0 threshold; leave the scale rule alone
+  - [x] 2.2 Fill the ratios in `detect_mismatches`, `None` below the 1.0 threshold; leave the scale rule alone
     - _Requirements: 1.2, 1.5_
-  - [ ] 2.3 Add the ratio sentence to `describe_mismatch` in `poltergeist/activity.py`
+  - [x] 2.3 Add the ratio sentence to `describe_mismatch` in `poltergeist/activity.py`
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
-  - [ ] 2.4 Read `POLTERGEIST_MISMATCH_WINDOW_SECONDS` in `poltergeist/detection.py`, keep the module constant
+  - [x] 2.4 Read `POLTERGEIST_MISMATCH_WINDOW_SECONDS` in `poltergeist/detection.py`, keep the module constant
     - _Requirements: 3.1, 3.2, 3.3, 3.4_
-  - [ ] 2.5 Tests for the ratio, the sentence and the window
+  - [x] 2.5 Tests for the ratio, the sentence and the window
     - _Requirements: 7.1_
 
 - [ ] 3. The hook address, the example hook file and the agent example

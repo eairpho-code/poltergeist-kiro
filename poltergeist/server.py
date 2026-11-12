@@ -222,6 +222,8 @@ def _mismatch_to_dict(mismatch) -> dict:
         "offset_x": mismatch.offset_x,
         "offset_y": mismatch.offset_y,
         "distance": mismatch.distance,
+        "ratio_x": mismatch.ratio_x,
+        "ratio_y": mismatch.ratio_y,
     }
 
 

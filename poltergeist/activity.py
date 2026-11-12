@@ -6,6 +6,7 @@ never on the dataclasses. The watcher and the Claude Code hook use them to
 tell an agent what a human did, without the agent parsing JSON.
 """
 
+import math
 from typing import List, Optional
 
 from poltergeist.action_log import parse_timestamp
@@ -79,6 +80,24 @@ def _signed(value: float) -> str:
     return f"{value:+.1f}"
 
 
+def _ratio_part(prefix: str, value) -> str:
+    """Format one ratio as ``x1.50``; an unknown or unusable value as ``x?``."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+        return f"{prefix}?"
+    return f"{prefix}{value:.2f}"
+
+
+def _ratio_phrase(mismatch: dict) -> str:
+    """The ratio of one pair, or an empty string when both are unknown."""
+    ratio_x = mismatch.get("ratio_x")
+    ratio_y = mismatch.get("ratio_y")
+    x = _ratio_part("x", ratio_x)
+    y = _ratio_part("y", ratio_y)
+    if x == "x?" and y == "y?":
+        return ""
+    return f", ratio {x} / {y} for this pair alone"
+
+
 def describe_mismatch(mismatch: dict) -> str:
     """Describe a mismatch: how long after and how far off the human clicked.
 
@@ -98,7 +117,8 @@ def describe_mismatch(mismatch: dict) -> str:
 
     return (
         f"the human's click at {human_point} came {seconds:.1f}s after the "
-        f"agent's click at {agent_point}, offset {offset}: that click probably "
+        f"agent's click at {agent_point}, offset {offset}"
+        f"{_ratio_phrase(mismatch)}: that click probably "
         f"missed or did something the human did not want"
     )
 

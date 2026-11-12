@@ -14,7 +14,9 @@ These functions operate on the dataclasses defined in
 (``tests/test_mismatch.py`` and ``tests/test_scale_problem.py``).
 """
 
+import logging
 import math
+import os
 from datetime import datetime
 from typing import List, Optional
 
@@ -24,9 +26,41 @@ from poltergeist.action_log import (
     Mismatch,
 )
 
+logger = logging.getLogger("poltergeist.detection")
+
+# Environment variable that sets the pairing window, in seconds.
+WINDOW_ENV_VAR = "POLTERGEIST_MISMATCH_WINDOW_SECONDS"
+
+DEFAULT_MISMATCH_WINDOW_SECONDS = 5.0
+
+
+def _window_from_environment() -> float:
+    """Read the pairing window from the environment; fall back to 5 seconds.
+
+    A value that is not a number, not finite or not above 0 is ignored with a
+    warning.
+    """
+    raw = os.environ.get(WINDOW_ENV_VAR)
+    if raw is None:
+        return DEFAULT_MISMATCH_WINDOW_SECONDS
+    try:
+        value = float(raw)
+    except ValueError:
+        value = math.nan
+    if not math.isfinite(value) or value <= 0:
+        logger.warning(
+            "Ignoring %s=%r: it must be a finite number above 0; using %s seconds",
+            WINDOW_ENV_VAR,
+            raw,
+            DEFAULT_MISMATCH_WINDOW_SECONDS,
+        )
+        return DEFAULT_MISMATCH_WINDOW_SECONDS
+    return value
+
+
 # The mismatch window: an agent click counts only when it happened strictly
 # less than this many seconds before the human click (exclusive boundary).
-MISMATCH_WINDOW_SECONDS = 5.0
+MISMATCH_WINDOW_SECONDS = _window_from_environment()
 
 # A human coordinate with an absolute value below this is treated as "near
 # zero" and excluded from scale-ratio calculations (avoids division blow-ups).
@@ -108,6 +142,16 @@ def detect_mismatches(actions: List[ClickAction]) -> List[Mismatch]:
             continue
 
         matched_agents.add(id(best_agent))
+        ratio_x = (
+            best_agent.normalized_x / action.normalized_x
+            if abs(action.normalized_x) >= NEAR_ZERO
+            else None
+        )
+        ratio_y = (
+            best_agent.normalized_y / action.normalized_y
+            if abs(action.normalized_y) >= NEAR_ZERO
+            else None
+        )
         mismatches.append(
             Mismatch(
                 agent_click=best_agent,
@@ -115,6 +159,8 @@ def detect_mismatches(actions: List[ClickAction]) -> List[Mismatch]:
                 offset_x=action.normalized_x - best_agent.normalized_x,
                 offset_y=action.normalized_y - best_agent.normalized_y,
                 distance=best_distance,
+                ratio_x=ratio_x,
+                ratio_y=ratio_y,
             )
         )
 

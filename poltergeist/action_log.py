@@ -70,6 +70,10 @@ class Mismatch:
     offset_x: float  # human_x - agent_x (device points)
     offset_y: float  # human_y - agent_y (device points)
     distance: float  # Euclidean distance (device points)
+    # agent / human for this pair alone (device points); None when the human
+    # coordinate is below the near-zero threshold in absolute value.
+    ratio_x: Optional[float] = None
+    ratio_y: Optional[float] = None
 
 
 @dataclass
