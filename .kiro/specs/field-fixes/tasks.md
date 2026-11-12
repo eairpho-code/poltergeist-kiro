@@ -22,26 +22,26 @@ This plan fixes the five things seen in a real run: the ratio of a pair, the pai
   - [x] 2.5 Tests for the ratio, the sentence and the window
     - _Requirements: 7.1_
 
-- [ ] 3. The hook address, the example hook file and the agent example
-  - [ ] 3.1 Parse `--url` and `--url=` in `poltergeist/kiro_hook.py`, with the order of precedence
+- [x] 3. The hook address, the example hook file and the agent example
+  - [x] 3.1 Parse `--url` and `--url=` in `poltergeist/kiro_hook.py`, with the order of precedence
     - _Requirements: 4.1, 4.2, 4.3_
-  - [ ] 3.2 Update `integrations/kiro/hooks/poltergeist.json` with the absolute path and `--url`
+  - [x] 3.2 Update `integrations/kiro/hooks/poltergeist.json` with the absolute path and `--url`
     - _Requirements: 4.4_
-  - [ ] 3.3 Create `integrations/kiro/agents/simdriver.json`
+  - [x] 3.3 Create `integrations/kiro/agents/simdriver.json`
     - _Requirements: 4.5_
-  - [ ] 3.4 Tests in `tests/test_kiro_hook.py` for `--url` and the example files
+  - [x] 3.4 Tests in `tests/test_kiro_hook.py` for `--url` and the example files
     - _Requirements: 7.1, 7.2_
 
-- [ ] 4. The demo and its check
-  - [ ] 4.1 Add the ratio and the sentence to the JavaScript core of `demo/index.html`, and `ratio_x`, `ratio_y` to the JSON on the page
+- [x] 4. The demo and its check
+  - [x] 4.1 Add the ratio and the sentence to the JavaScript core of `demo/index.html`, and `ratio_x`, `ratio_y` to the JSON on the page
     - _Requirements: 5.1, 5.2_
-  - [ ] 4.2 Extend `demo/check_port.py` to compare ratios and sentences
+  - [x] 4.2 Extend `demo/check_port.py` to compare ratios and sentences
     - _Requirements: 5.3_
 
-- [ ] 5. Documentation
-  - [ ] 5.1 Update `README.md`
+- [x] 5. Documentation
+  - [x] 5.1 Update `README.md`
     - _Requirements: 6.1 to 6.8_
-  - [ ] 5.2 Update `docs/usage.md`
+  - [x] 5.2 Update `docs/usage.md`
     - _Requirements: 6.1 to 6.8_
-  - [ ] 5.3 Tick the tasks of this plan and run the whole test suite
+  - [x] 5.3 Tick the tasks of this plan and run the whole test suite
     - _Requirements: 7.3, 7.4_

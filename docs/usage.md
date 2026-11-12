@@ -42,12 +42,17 @@ paired.
 Pairing considers **clicks only**; drags never take part. For each human click,
 in time order, the server looks for the closest earlier agent click, by
 Euclidean distance in device points, that happened strictly within the previous
-**5 seconds** (the boundary is exclusive: a gap of exactly 5 seconds does not
+**5 seconds** by default (set `POLTERGEIST_MISMATCH_WINDOW_SECONDS` to change it; the boundary is exclusive: a gap of exactly 5 seconds does not
 count). The match is one-to-one: every agent click and every human click takes
 part in at most one pair. A matched pair is a *mismatch*; there is no distance
 threshold, so any matched pair is reported. Each mismatch carries the offset
 `(human_x - agent_x, human_y - agent_y)` and the Euclidean distance, both in
-device points.
+device points. It also carries `ratio_x = agent_x / human_x` and
+`ratio_y = agent_y / human_y`, in device points, for that pair alone. Each is
+`null` when the absolute value of that human coordinate is below 1.0. The
+sentence adds `, ratio x1.50 / y1.50 for this pair alone` after the offset
+(nothing when both are unknown). This is a number for one pair; it does not name
+a coordinate scale problem.
 
 ### Naming a coordinate scale problem
 
@@ -311,6 +316,7 @@ A bad `since` value is answered with HTTP 400:
 | `POLTERGEIST_PORT` | `8000` | Bind port, used only over `streamable-http`. |
 | `POLTERGEIST_LOG_LEVEL` | `INFO` | Log level name. An unknown value falls back to `INFO` and writes a warning. Logs go to standard error only, never standard output, so the stdio protocol stays clean. |
 | `POLTERGEIST_REDACT_UI_LABELS` | unset | When set to a truthy value (`1`, `true`, `yes` or `on`, case-insensitive) the UI element label is dropped from every recorded action; the role is kept. |
+| `POLTERGEIST_MISMATCH_WINDOW_SECONDS` | `5` | The pairing window in seconds. A value that is not a number, not finite or not above 0 is ignored with a warning, and 5 is used. |
 
 ### The watcher (`poltergeist-watch`)
 
@@ -327,6 +333,13 @@ value by more than 5 percent of that value. A scale problem that already exists
 when the watcher starts counts as reported. When the server returns no scale
 problem, the watcher forgets the reported one, so one that appears again is
 reported again.
+
+### The Kiro hook (`poltergeist-kiro-hook`)
+
+It takes `--url ADDRESS` (or `--url=ADDRESS`). The order of precedence is
+`--url`, then `POLTERGEIST_URL`, then `http://127.0.0.1:8000`. Any other
+argument, or `--url` without a value, is ignored; the hook exits 0 and prints
+nothing.
 
 ### The Claude Code hook (`poltergeist-claude-hook`)
 
@@ -360,18 +373,26 @@ The example files are in `integrations/kiro/`.
 1. Start the server over HTTP: `POLTERGEIST_TRANSPORT=streamable-http poltergeist-server`.
 2. Copy the files into your project's `.kiro/` folder:
    `integrations/kiro/hooks/poltergeist.json` to `.kiro/hooks/`,
-   `integrations/kiro/steering/poltergeist.md` to `.kiro/steering/`, and
-   merge `integrations/kiro/mcp.json` into your `mcp.json`. It connects the
-   `poltergeist` server by URL and starts the simulator server with
-   `npx -y ios-simulator-mcp`.
-3. Run Kiro with hooks on: `kiro-cli chat --v3`.
+   `integrations/kiro/steering/poltergeist.md` to `.kiro/steering/`,
+   `integrations/kiro/agents/simdriver.json` to `.kiro/agents/`, and
+   merge `integrations/kiro/mcp.json` into `.kiro/settings/mcp.json`, which is
+   the Kiro MCP configuration file. It connects the `poltergeist` server by URL
+   and starts the simulator server with `npx -y ios-simulator-mcp`.
+3. In the copied hook file, replace `/ABSOLUTE/PATH/TO/poltergeist-kiro-hook`
+   with the output of `which poltergeist-kiro-hook`, run with the virtual
+   environment active. Kiro does not find the command by name unless that
+   environment is on its PATH.
+4. Run Kiro with hooks on: `kiro-cli chat --v3`.
 
 The `PreToolUse` command hook runs `poltergeist-kiro-hook`, which records the
 agent's `ui_tap` and `ui_swipe` on `POST /agent-click` (device points, scale
-factor 1; the server address comes from `POLTERGEIST_URL`, default
-`http://127.0.0.1:8000`). The `PostToolUse` agent hook tells the model to call
-`get_human_actions` before its next simulator action. Both hooks use the matcher
-`@ios-simulator`, so the server must be named `ios-simulator` in `mcp.json`.
+factor 1). The server address is given by `--url ADDRESS` (or `--url=ADDRESS`),
+as in `/ABSOLUTE/PATH/TO/poltergeist-kiro-hook --url http://127.0.0.1:8000`.
+The order of precedence is `--url`, then `POLTERGEIST_URL`, then
+`http://127.0.0.1:8000`. Any other argument is ignored, and the hook never
+fails. The `PostToolUse` agent hook tells the model to call `get_human_actions`
+before its next simulator action. Both hooks use the matcher `@ios-simulator`,
+so the server must be named `ios-simulator` in `mcp.json`.
 
 What to know:
 
@@ -379,14 +400,47 @@ What to know:
   told through an `agent` hook instead.
 - Hooks run on the V3 engine only. The older default engine does not read
   `.kiro/hooks/`.
+- **Non-interactive mode.** With `kiro-cli chat --v3 --no-interactive`,
+  `--trust-tools=@ios-simulator/ui_tap` and
+  `--trust-tools=@ios-simulator,@poltergeist` do not let MCP tools run: Kiro
+  says "tool permission approval is not supported in non-interactive mode".
+  What works is an agent configuration file used with `--agent`. The file
+  `integrations/kiro/agents/simdriver.json` is one:
 
-What was checked: with `kiro-cli chat --v3`, a model drove a stand-in simulator
-MCP server with two hooks; it called `get_human_actions` after every tap,
-reported each mismatch and, after the third tap, the coordinate scale problem.
+  ```json
+  {
+    "name": "simdriver",
+    "tools": ["@ios-simulator", "@poltergeist"],
+    "allowedTools": ["@ios-simulator", "@poltergeist"],
+    "includeMcpJson": true,
+    "resources": ["file://.kiro/steering/**/*.md"]
+  }
+  ```
 
-What was not checked: the real `ios-simulator-mcp` was not run. Its tool names
-and arguments (`ui_tap`, `ui_swipe`) come from its public README. The Kiro IDE
-was not used either; only `kiro-cli` was.
+  Run it with `kiro-cli chat --v3 --no-interactive --agent simdriver`.
+  `--trust-all-tools` also works, but it lets the model run any command
+  without asking. Do not recommend or use it.
+- **IDB.** `ios-simulator-mcp` needs IDB. On macOS Tahoe, Homebrew asks for the
+  Command Line Tools first. The IDB release package also works; point
+  `IOS_SIMULATOR_MCP_IDB_PATH` at the `idb` client. When the IDB companion is
+  not running, `ui_tap` fails with "Failed to connect to companion"; run
+  `idb connect <udid>` first.
+- **Screenshot scale.** `ios-simulator-mcp` scales its screenshots (`ui_view`)
+  to device points, so a model that uses it usually does not make the "pixels
+  read as points" mistake. Every tap landed in the real run. Poltergeist still
+  records the corrections. The coordinate scale problem shows up mostly with
+  tools or flows whose screenshots are in pixels.
+- **Permissions.** The macOS observer needs the Accessibility and the Input
+  Monitoring permissions. You must grant them yourself in System Settings >
+  Privacy & Security.
+
+What was checked: the real `ios-simulator-mcp` 2.2.1 with IDB 1.7.8 was run
+with `kiro-cli chat --v3` and its taps worked. The wrong-scale case was
+reproduced only with a stand-in simulator tool whose screenshots are 1.5 times
+the device points: the model called `get_human_actions` after every tap and
+reported each mismatch and the coordinate scale problem.
+
+What was not checked: the Kiro IDE was not used; only `kiro-cli` was.
 
 ## Privacy notes
 
