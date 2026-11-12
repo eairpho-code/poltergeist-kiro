@@ -32,6 +32,6 @@ This plan adds the console script `poltergeist` with `init kiro` and `doctor`. E
   - [x] 3.3 Tests in `tests/test_cli_doctor.py`
     - _Requirements: 11.1_
 
-- [ ] 4. Documentation
-  - [ ] 4.1 Update `README.md` and `docs/usage.md`: the two commands, the manual steps as the alternative, exit codes, `--dry-run`, `--force`, the observer and the permissions
+- [x] 4. Documentation
+  - [x] 4.1 Update `README.md` and `docs/usage.md`: the two commands, the manual steps as the alternative, exit codes, `--dry-run`, `--force`, the observer and the permissions
     - _Requirements: 11.2, 11.3_

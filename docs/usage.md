@@ -370,6 +370,74 @@ other elements as `on a <role> "<label>"` (or `on a <role>`).
 Poltergeist works with `kiro-cli` through Kiro's own hooks, steering and MCP.
 The example files are in `integrations/kiro/`.
 
+### The setup commands
+
+Two commands (the console script `poltergeist`) do the setup and check it.
+
+```sh
+poltergeist init kiro [--dir DIR] [--url ADDRESS] [--force] [--dry-run]
+poltergeist doctor [--dir DIR] [--url ADDRESS]
+```
+
+`poltergeist init kiro` writes only inside `DIR/.kiro/`. `DIR` defaults to the
+current folder and must exist; `ADDRESS` defaults to `http://127.0.0.1:8000` and
+must start with `http://` or `https://`. Otherwise the command exits with 2 and
+writes nothing. It writes:
+
+- `.kiro/hooks/poltergeist.json`, with the absolute path of
+  `poltergeist-kiro-hook` (the one next to the Python that runs `poltergeist`)
+  and `--url ADDRESS`. If that program cannot be found, the file is not written
+  and the exit code is 1.
+- `.kiro/steering/poltergeist.md` and `.kiro/agents/simdriver.json`.
+- `.kiro/settings/mcp.json`, merged and never replaced: other keys and other
+  servers are kept, `poltergeist` (`ADDRESS/mcp`) and `ios-simulator` are added
+  only when absent.
+
+It prints one line per file: `created`, `unchanged`, `updated` or `skipped`
+(with the reason). A file that exists with different content is `skipped` and
+left as it is. An existing `poltergeist` or `ios-simulator` entry in `mcp.json`
+with different content is a conflict and is skipped too. Running it a second
+time reports every file as `unchanged`.
+
+- `--dry-run` writes nothing and prints what it would do; each line has the
+  word `would`.
+- `--force` overwrites a file that differs and reports it as `updated`. In
+  `mcp.json` only the two Poltergeist entries are replaced. An `mcp.json` that
+  is not valid JSON is `skipped` and never changed, even with `--force`.
+
+Exit codes of `init kiro`: 0 when every file is `created`, `unchanged` or
+`updated`; 1 when anything was `skipped` (the other files are still written) or
+the hook program was not found; 2 for a bad argument or an unknown command.
+
+`poltergeist doctor` changes nothing. It prints one line per check, in this
+order, as `[ok] name: detail`, `[warn] name: detail` or `[fail] name: detail`;
+a `warn` or `fail` line says how to fix it:
+
+| Check | Level | What it checks |
+| --- | --- | --- |
+| `server` | fail | `GET ADDRESS/human-actions` answers with JSON that has `human_actions` |
+| `hooks` | fail | the hook file is valid, has both hooks, and its command is an absolute path to an executable file |
+| `steering` | warn | `.kiro/steering/poltergeist.md` exists |
+| `agent` | warn | `.kiro/agents/simdriver.json` exists and is valid |
+| `mcp` | fail | `mcp.json` is valid, has `poltergeist` with `ADDRESS/mcp` and `ios-simulator` |
+| `observer` | warn | a `poltergeist-observer` process runs |
+| `simulator` | warn | `xcrun simctl list devices booted` shows a `Booted` device |
+| `idb` | warn | the `idb` client is found and `idb list-targets` prints something |
+| `kiro` | warn | `kiro-cli --version` succeeds |
+
+External commands have a 5 second timeout; a missing, failing or hung command
+is a `warn`, never a crash. It ends with `N ok, N warn, N fail`. The exit code
+is 1 when any check is `[fail]`, otherwise 0 (warnings do not change it).
+
+What the commands cannot do: they do not build or start the observer, and they
+cannot grant or check the Accessibility and Input Monitoring permissions. You
+must build and start the observer and grant both permissions yourself in System
+Settings > Privacy & Security; `doctor` cannot tell whether they are granted.
+
+### The manual steps (the alternative)
+
+The same setup by hand, if you prefer not to use `poltergeist init kiro`:
+
 1. Start the server over HTTP: `POLTERGEIST_TRANSPORT=streamable-http poltergeist-server`.
 2. Copy the files into your project's `.kiro/` folder:
    `integrations/kiro/hooks/poltergeist.json` to `.kiro/hooks/`,

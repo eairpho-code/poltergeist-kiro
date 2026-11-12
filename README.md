@@ -218,6 +218,39 @@ python demo/check_app.py    # the phone mini-app behaves as the page describes
 Poltergeist works with `kiro-cli` through Kiro's own hooks, steering and MCP.
 The example files are in `integrations/kiro/`.
 
+The quick way is two commands, run from your Kiro project folder with the
+virtual environment active:
+
+```sh
+poltergeist init kiro      # writes the hooks, steering, agent file and mcp.json
+poltergeist doctor         # checks the setup and the machine
+```
+
+`poltergeist init kiro [--dir DIR] [--url ADDRESS] [--force] [--dry-run]`
+writes only inside `DIR/.kiro/`, puts the absolute path of
+`poltergeist-kiro-hook` and `--url ADDRESS` in the hook, and merges `mcp.json`
+without removing anything. It prints `created`, `unchanged`, `updated` or
+`skipped` for each file. Running it again reports every file as `unchanged`.
+
+- `--dry-run` writes nothing and prints what it would do.
+- `--force` overwrites a file that differs (in `mcp.json` only the two
+  Poltergeist entries). Without it, a differing file is `skipped`. An `mcp.json`
+  that is not valid JSON is never changed.
+- Exit code: 0 when nothing was skipped, 1 when something was skipped (or the
+  hook program was not found), 2 for a bad argument.
+
+`poltergeist doctor [--dir DIR] [--url ADDRESS]` prints `[ok]`, `[warn]` or
+`[fail]` for the server, hooks, steering, agent, mcp, observer, simulator, idb
+and kiro checks, with a fix for each problem, then `N ok, N warn, N fail`. Exit
+code: 1 when any check is `[fail]`, otherwise 0.
+
+The commands do not build or start the observer, and they cannot grant or check
+the Accessibility and Input Monitoring permissions. Build and start the
+observer and grant both permissions yourself in System Settings > Privacy &
+Security. Every option is in [`docs/usage.md`](docs/usage.md).
+
+The manual steps, as the alternative:
+
 1. Start the server over HTTP: `POLTERGEIST_TRANSPORT=streamable-http poltergeist-server`.
 2. Copy the files into your project's `.kiro/` folder:
    `integrations/kiro/hooks/poltergeist.json` to `.kiro/hooks/`,
