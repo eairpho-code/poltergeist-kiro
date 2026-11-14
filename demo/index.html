@@ -197,11 +197,8 @@
       font-weight: 500;
     }
 
-    /* Hide intro chrome on short viewports. These come after the base rules
-       above and use higher-specificity selectors so they always win. */
-    @media (max-height: 760px) {
-      .col-left .steps { display: none; }
-    }
+    /* Hide the intro text on short viewports. The numbered steps and the
+       status line stay visible at every height. */
     @media (max-height: 660px) {
       .intro .eyebrow, .intro .lede { display: none; }
     }
@@ -212,11 +209,6 @@
       background: var(--human);
       color: #fff;
       border-color: var(--human);
-    }
-    .btn.agentbtn {
-      background: var(--agent);
-      color: #fff;
-      border-color: var(--agent);
     }
 
     .winpick { display: flex; flex-direction: column; gap: 6px; }
@@ -820,14 +812,14 @@
         <div class="col-left">
           <div class="card">
             <ol class="steps">
-              <li><span class="n">1</span><span>Press <b>Agent step</b> and watch its tap miss the control it meant.</span></li>
+              <li><span class="n">1</span><span>Press <b>Try it yourself</b> and watch its tap miss the control it meant.</span></li>
               <li><span class="n">2</span><span>Click where it <b>should</b> have tapped. Do this three times.</span></li>
               <li><span class="n">3</span><span>Poltergeist names the scale bug; the agent fixes itself and finishes alone.</span></li>
             </ol>
             <div class="controls">
               <div class="btn-row">
-                <button id="agentBtn" class="btn agentbtn" type="button">Agent step</button>
-                <button id="autoBtn" class="btn primary" type="button">Play the story</button>
+                <button id="agentBtn" class="btn primary" type="button">Try it yourself</button>
+                <button id="autoBtn" class="btn" type="button">Watch the story</button>
                 <button id="resetBtn" class="btn" type="button">Reset</button>
               </div>
               <div class="winpick">
@@ -838,7 +830,7 @@
                   <button type="button" data-win="30000" aria-pressed="false">30s</button>
                 </div>
               </div>
-              <div id="window" class="status">Window: 15s. Press &ldquo;Agent step&rdquo; to begin.</div>
+              <div id="window" class="status">Window: 15s. Press &ldquo;Try it yourself&rdquo;, then click where the agent should have tapped.</div>
               <noscript>
                 <p class="nojs">This demo needs JavaScript to respond to your clicks.
                   Without it the phone above is a still picture and the buttons do nothing.</p>
@@ -1878,6 +1870,32 @@
     }
     // </app>
 
+    // <labels>
+    // Small decisions about the buttons and the first and last status
+    // sentences. No browser objects, so they can be run in Node.
+    var LABEL_TRY = 'Try it yourself';
+    var LABEL_NEXT = 'Next step';
+    var LABEL_REPLAY = 'Replay';
+
+    function agentButtonLabel(done, stepCount, auto) {
+      if (done) return auto ? LABEL_TRY : LABEL_REPLAY;
+      return stepCount === 0 ? LABEL_TRY : LABEL_NEXT;
+    }
+
+    function agentButtonAction(done) {
+      return done ? 'restart' : 'step';
+    }
+
+    function introStatus(winLabel) {
+      return 'Window: ' + winLabel + '. Press \u201C' + LABEL_TRY +
+        '\u201D, then click where the agent should have tapped.';
+    }
+
+    function autoDoneStatus() {
+      return 'The ghost did the correcting. Press \u201CTry it yourself\u201D to do it yourself.';
+    }
+    // </labels>
+
     // ---- Page behaviour (stage 4) ---------------------------------------
     // The page code below the core and the app. It uses the browser: it draws
     // the app, reads pointer gestures on the phone, drives the scripted agent,
@@ -1931,6 +1949,7 @@
           events: [],                 // {t, actor, kind, nx, ny, endX, endY, label, role, pairedWith}
           windowMs: 15000,            // correction window
           stepCount: 0,               // agent steps taken
+          lastRunAuto: false,         // the run was the automatic story
           corrected: false,          // has the agent divided out its scale?
           factorX: 1, factorY: 1,     // measured factors once corrected
           want: null,                 // the control the agent meant, when it missed
@@ -2784,6 +2803,13 @@
         countdownTimer = setInterval(tickCountdown, 100);
       }
       function tickCountdown() {
+        // A finished run keeps its last status line: stop the countdown.
+        if (taskDone(S.app)) {
+          if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+          S.countdownUntil = 0;
+          renderTimeline(snapshot());
+          return;
+        }
         var left = S.countdownUntil - Date.now();
         if (left <= 0) {
           left = 0;
@@ -2793,7 +2819,7 @@
           // The window closed with no correction: remove the intended-control hint.
           S.want = null;
           renderWant();
-          setStatus('Window closed. Press \u201CAgent step\u201D or correct the next miss. Window: ' +
+          setStatus('Window closed. Press \u201CNext step\u201D or correct the next miss. Window: ' +
             winLabel() + '.');
         } else {
           setStatus('Correct it! ' + fixed(left / 1000, 1) + 's left in the ' +
@@ -2808,13 +2834,7 @@
         var disabled = S.busy;
         agentBtn.disabled = disabled;
         autoBtn.disabled = disabled;
-        if (taskDone(S.app)) {
-          agentBtn.textContent = 'Replay';
-        } else if (S.stepCount === 0) {
-          agentBtn.textContent = 'Agent step';
-        } else {
-          agentBtn.textContent = 'Next step';
-        }
+        agentBtn.textContent = agentButtonLabel(taskDone(S.app), S.stepCount, S.lastRunAuto);
       }
 
       // The automatic demo: reset, then run steps; after each miss a ghost
@@ -2824,19 +2844,21 @@
         if (S.auto) return;
         reset();
         S.auto = true;
+        S.lastRunAuto = true;
         updateButtons();
         var guard = 0;
         function loop() {
           if (!S.auto) return;
           if (taskDone(S.app) || !policy(S.app)) {
             S.auto = false;
+            if (taskDone(S.app)) setStatus(autoDoneStatus());
             updateButtons();
             return;
           }
           if (guard++ > 20) { S.auto = false; updateButtons(); return; }
           agentStep({ auto: true }).then(function () {
             if (!S.auto) return;
-            if (taskDone(S.app)) { S.auto = false; updateButtons(); return; }
+            if (taskDone(S.app)) { S.auto = false; setStatus(autoDoneStatus()); updateButtons(); return; }
             if (S.corrected) {
               // The agent carries on by itself; just wait and check.
               setTimeout(loop, 1200);
@@ -2881,7 +2903,7 @@
         feedAdd('task', '<b>task</b> send Maya Chen the beach photo. ' +
           'The agent reads coordinates about 1.5&times; too big, so its taps miss.');
         renderPanels();
-        setStatus('Window: ' + winLabel() + '. Press \u201CAgent step\u201D to begin.');
+        setStatus(introStatus(winLabel()));
         updateButtons();
       }
 
@@ -2893,7 +2915,7 @@
             parseInt(b.getAttribute('data-win'), 10) === ms ? 'true' : 'false');
         });
         if (!S.countdownUntil) {
-          setStatus('Window: ' + winLabel() + '. Press \u201CAgent step\u201D to begin.');
+          setStatus(introStatus(winLabel()));
         }
         renderPanels();
       }
@@ -2917,7 +2939,10 @@
       }
 
       if (agentBtn) agentBtn.addEventListener('click', function () {
-        if (taskDone(S.app)) { reset(); return; }
+        if (agentButtonAction(taskDone(S.app)) === 'restart') {
+          reset();
+          S.lastRunAuto = false;
+        }
         agentStep();
       });
       if (autoBtn) autoBtn.addEventListener('click', function () { runAuto(); });
