@@ -205,6 +205,12 @@ port of the detection rules, driving a scripted agent that clicks a mock phone
 app with a coordinate bug, so you can watch a human correct the agent and see
 the mismatch and scale problem named.
 
+The demo has two modes. **Try it yourself** (the primary button) makes you the
+human: the agent taps, and you click where it should have tapped; it reads
+**Next step** during the run and **Replay** when a manual run is done.
+**Watch the story** (the secondary button) runs everything by itself, with a
+ghost doing the correcting.
+
 Two checks confirm the JavaScript stays faithful to the Python code (both need
 Node.js, run from the repository root):
 
